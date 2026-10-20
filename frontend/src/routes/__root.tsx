@@ -4,7 +4,7 @@ import {
   Scripts,
   createRootRoute,
 } from '@tanstack/react-router'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import appCss from '~/styles/app.css?url'
 import { apiBaseUrl } from '~/lib/api'
 import { Sheet, SheetContent, SheetTrigger } from '~/components/ui/sheet'
@@ -48,6 +48,8 @@ const navLinks = [
 ] as const
 
 function RootDocument({ children }: { children: ReactNode }) {
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -56,7 +58,11 @@ function RootDocument({ children }: { children: ReactNode }) {
       <body>
         <div id="app-shell">
           {/* Left Sidebar */}
-          <aside id="sidebar" className="hidden lg:flex">
+          <aside
+            id="sidebar"
+            className="hidden lg:flex"
+            data-collapsed={!sidebarOpen ? '' : undefined}
+          >
             <div className="flex h-12 items-center px-4 border-b border-sidebar-border">
               <Link to="/" className="flex items-center gap-2">
                 <SquareParking className="h-5 w-5 text-primary" aria-hidden="true" />
@@ -129,16 +135,16 @@ function RootDocument({ children }: { children: ReactNode }) {
                   </Sheet>
                 </div>
 
-                {/* On desktop, P logo is a home link */}
+                {/* On desktop, P logo toggles the sidebar */}
                 <div className="hidden lg:block">
-                  <Link
-                    to="/"
+                  <button
+                    onClick={() => setSidebarOpen((prev) => !prev)}
                     className="flex items-center justify-center p-1.5 rounded-md hover:bg-muted text-primary transition-colors cursor-pointer"
-                    aria-label="ParkEase Home"
-                    title="ParkEase Home"
+                    aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+                    title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
                   >
                     <SquareParking className="h-5 w-5" />
-                  </Link>
+                  </button>
                 </div>
 
                 {/* Dark mode button right after the P logo */}

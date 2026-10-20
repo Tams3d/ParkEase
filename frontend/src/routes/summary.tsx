@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { Button } from '~/components/ui/button'
+import { RefreshCw } from 'lucide-react'
 import { Card, CardContent } from '~/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table'
 import { Progress } from '~/components/ui/progress'
@@ -18,16 +18,23 @@ function SummaryPage() {
   const [summary, setSummary] = useState<Summary | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
   async function load() {
-    setLoading(true)
+    setRefreshing(true)
     setError('')
     try {
-      setSummary(await api.summary())
+      const minWait = new Promise((resolve) => setTimeout(resolve, 400))
+      const [nextSummary] = await Promise.all([
+        api.summary(),
+        minWait,
+      ])
+      setSummary(nextSummary)
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Could not load the summary.')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
@@ -48,9 +55,16 @@ function SummaryPage() {
             shared MySQL-backed backend.
           </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => void load()}>
-          Refresh
-        </Button>
+        <button
+          type="button"
+          disabled={refreshing}
+          className="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted cursor-pointer disabled:opacity-60"
+          onClick={() => void load()}
+          title="Refresh summary data"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+        </button>
       </div>
 
       {error && <ErrorNotice message={error} />}

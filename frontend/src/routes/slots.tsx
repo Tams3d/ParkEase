@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { Button } from '~/components/ui/button'
+import { RefreshCw } from 'lucide-react'
 import { Card, CardContent } from '~/components/ui/card'
 import { ErrorNotice } from '~/components/ui'
 import { Loading } from '~/components/ui'
@@ -18,18 +18,25 @@ function SlotsPage() {
   const [types, setTypes] = useState<VehicleType[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
   async function load() {
-    setLoading(true)
+    setRefreshing(true)
     setError('')
     try {
-      const [nextSlots, nextTypes] = await Promise.all([api.slots(), api.vehicleTypes()])
+      const minWait = new Promise((resolve) => setTimeout(resolve, 400))
+      const [nextSlots, nextTypes] = await Promise.all([
+        api.slots(),
+        api.vehicleTypes(),
+        minWait,
+      ])
       setSlots(nextSlots)
       setTypes(nextTypes)
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Could not load the slot map.')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
@@ -50,9 +57,16 @@ function SlotsPage() {
             slots show the plate and vehicle code.
           </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => void load()}>
-          Refresh
-        </Button>
+        <button
+          type="button"
+          disabled={refreshing}
+          className="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted cursor-pointer disabled:opacity-60"
+          onClick={() => void load()}
+          title="Refresh slot map"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+        </button>
       </div>
 
       {error && <ErrorNotice message={error} />}

@@ -180,7 +180,14 @@
 }
 
 #sidebar {
-  @apply flex flex-col w-[228px] shrink-0 bg-sidebar border-r border-sidebar-border transition-colors duration-200;
+  @apply flex flex-col w-[228px] shrink-0 bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out overflow-hidden;
+}
+
+#sidebar[data-collapsed] {
+  width: 0;
+  border-right-width: 0;
+  padding: 0;
+  opacity: 0;
 }
 
 #top-bar {
@@ -202,4 +209,18 @@
 
 .nav-link-active {
   @apply text-foreground font-medium border-l-2 border-info bg-muted/40;
+}
+
+/* Light-mode outlines for visual clarity */
+:root:not(.dark) [data-slot="card"] {
+  --tw-ring-color: var(--border);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+:root:not(.dark) #sheet {
+  border-left: 1px solid var(--border);
+}
+
+:root:not(.dark) #top-bar {
+  border-bottom: 1px solid var(--border);
 }

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import type { FormEvent } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
 import { Label } from '~/components/ui/label'
@@ -19,6 +19,16 @@ function ExitPage() {
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search)
+      const ticketParam = searchParams.get('ticket') || searchParams.get('ticketNo')
+      if (ticketParam) {
+        setNumber(ticketParam.toUpperCase().startsWith('T-') ? ticketParam.toUpperCase() : `T-${ticketParam}`)
+      }
+    }
+  }, [])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
