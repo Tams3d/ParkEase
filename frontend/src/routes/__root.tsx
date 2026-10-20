@@ -10,6 +10,7 @@ import { apiBaseUrl } from '~/lib/api'
 import { Sheet, SheetContent, SheetTrigger } from '~/components/ui/sheet'
 import { Separator } from '~/components/ui/separator'
 import { SquareParking } from 'lucide-react'
+import { ThemeToggle } from '~/components/theme-toggle'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -27,6 +28,11 @@ export const Route = createRootRoute({
       { rel: 'icon', href: '/favicon.ico' },
       { rel: 'manifest', href: '/site.webmanifest' },
     ],
+    scripts: [
+      {
+        children: `(function(){try{var t=localStorage.getItem('parkease-theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;if(t==='dark'||(!t&&d)){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}}catch(e){}})()`,
+      },
+    ],
   }),
   shellComponent: RootDocument,
   errorComponent: RootError,
@@ -43,17 +49,18 @@ const navLinks = [
 
 function RootDocument({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body>
         <div id="app-shell">
+          {/* Left Sidebar */}
           <aside id="sidebar" className="hidden lg:flex">
-            <div className="flex h-12 items-center justify-between px-4 border-b border-sidebar-border">
+            <div className="flex h-12 items-center px-4 border-b border-sidebar-border">
               <Link to="/" className="flex items-center gap-2">
                 <SquareParking className="h-5 w-5 text-primary" aria-hidden="true" />
-                <span className="font-semibold text-lg">ParkEase</span>
+                <span className="font-semibold text-lg tracking-tight">ParkEase</span>
               </Link>
             </div>
             <nav className="flex-1 p-4 space-y-1">
@@ -69,49 +76,82 @@ function RootDocument({ children }: { children: ReactNode }) {
                 </Link>
               ))}
             </nav>
-            <div className="border-t border-sidebar-border p-4 text-xs text-muted-foreground">
-              Spring Boot backend at <span className="font-mono">{apiBaseUrl}</span>
+            <div className="border-t border-sidebar-border p-4 text-xs text-muted-foreground flex items-center justify-between">
+              <span>Spring Boot backend at <span className="font-mono">{apiBaseUrl}</span></span>
             </div>
           </aside>
 
-          <div id="top-bar" className="lg:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <button className="p-2 rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" aria-label="Menu">
-                  <SquareParking className="h-5 w-5" />
-                </button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-64 p-4">
-                <Link to="/" className="flex items-center gap-2 mb-6">
-                  <SquareParking className="h-5 w-5 text-primary" aria-hidden="true" />
-                  <span className="font-semibold text-lg">ParkEase</span>
-                </Link>
-                <nav className="space-y-1">
-                  {navLinks.map((link) => (
-                    <Link
-                      key={link.to}
-                      to={link.to}
-                      className="nav-link rounded-md"
-                      activeOptions={{ exact: link.to === '/' }}
-                      activeProps={{ className: 'nav-link nav-link-active rounded-md' }}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                </nav>
-                <Separator className="my-4" />
-                <p className="text-xs text-muted-foreground">
-                  Spring Boot backend at <span className="font-mono">{apiBaseUrl}</span>
-                </p>
-              </SheetContent>
-            </Sheet>
-          </div>
+          {/* Right Main Area */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <header id="top-bar">
+              <div className="flex items-center gap-2">
+                {/* On mobile, P logo opens the navigation sheet */}
+                <div className="lg:hidden">
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <button
+                        className="p-1.5 rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-foreground cursor-pointer"
+                        aria-label="Menu"
+                        title="Menu"
+                      >
+                        <SquareParking className="h-5 w-5 text-primary" />
+                      </button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-64 p-4 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-6">
+                          <Link to="/" className="flex items-center gap-2">
+                            <SquareParking className="h-5 w-5 text-primary" aria-hidden="true" />
+                            <span className="font-semibold text-lg tracking-tight">ParkEase</span>
+                          </Link>
+                        </div>
+                        <nav className="space-y-1">
+                          {navLinks.map((link) => (
+                            <Link
+                              key={link.to}
+                              to={link.to}
+                              className="nav-link rounded-md"
+                              activeOptions={{ exact: link.to === '/' }}
+                              activeProps={{ className: 'nav-link nav-link-active rounded-md' }}
+                            >
+                              {link.label}
+                            </Link>
+                          ))}
+                        </nav>
+                      </div>
+                      <div>
+                        <Separator className="my-4" />
+                        <p className="text-xs text-muted-foreground">
+                          Spring Boot backend at <span className="font-mono">{apiBaseUrl}</span>
+                        </p>
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                </div>
 
-          <main id="sheet">
-            <div id="sheet-inner">
-              {children}
-            </div>
-          </main>
+                {/* On desktop, P logo is a home link */}
+                <div className="hidden lg:block">
+                  <Link
+                    to="/"
+                    className="flex items-center justify-center p-1.5 rounded-md hover:bg-muted text-primary transition-colors cursor-pointer"
+                    aria-label="ParkEase Home"
+                    title="ParkEase Home"
+                  >
+                    <SquareParking className="h-5 w-5" />
+                  </Link>
+                </div>
+
+                {/* Dark mode button right after the P logo */}
+                <ThemeToggle />
+              </div>
+            </header>
+
+            <main id="sheet">
+              <div id="sheet-inner">
+                {children}
+              </div>
+            </main>
+          </div>
         </div>
         <Scripts />
       </body>
