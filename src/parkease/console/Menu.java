@@ -1,16 +1,20 @@
 package parkease.console;
 
 import java.text.SimpleDateFormat;
+import java.util.List;
 import java.util.Locale;
 import java.util.Scanner;
 import java.util.TimeZone;
+import parkease.client.ParkingClient;
+import parkease.client.ParkingSummary;
+import parkease.client.SlotMap;
+import parkease.client.SlotView;
+import parkease.client.TypeCount;
 import parkease.exception.InvalidPlateException;
 import parkease.model.Chargeable;
-import parkease.model.Slot;
 import parkease.model.Ticket;
 import parkease.model.Vehicle;
 import parkease.model.VehicleType;
-import parkease.service.ParkingLot;
 import parkease.validation.Plate;
 
 public class Menu {
@@ -18,21 +22,21 @@ public class Menu {
   private final SimpleDateFormat formatter =
       new SimpleDateFormat("dd-MMM-yyyy hh:mm a", Locale.ENGLISH);
   private final Plate validator = new Plate();
-  private final ParkingLot parking;
+  private final ParkingClient parking;
   private final Scanner reader;
   private final boolean interactive = System.console() != null;
 
-  public Menu(ParkingLot parking, Scanner reader) {
+  public Menu(ParkingClient parking, Scanner reader) {
     this.parking = parking;
     this.reader = reader;
     formatter.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
   }
 
-  public void start() {
+  public void start() throws Exception {
     System.out.println();
     System.out.println("  ParkEase");
     System.out.println("  Parking management for bikes, cars and trucks");
-    System.out.println("  " + parking.getCapacity() + " slots available");
+    System.out.println("  " + parking.capacity() + " slots available");
     System.out.println();
     System.out.println("  Welcome. Select an option from the menu.");
     System.out.println();
@@ -219,22 +223,23 @@ public class Menu {
     System.out.println("    " + label + closed.slotText() + verb);
   }
 
-  private void slotMap() {
+  private void slotMap() throws Exception {
     System.out.println("  Slot map");
     System.out.println();
     System.out.println("    Occupied slots show the plate and vehicle code.");
     System.out.println("    Free slots show FREE.");
     System.out.println();
 
-    Slot[] slots = parking.getSlots();
+    SlotMap map = parking.slots();
+    List<SlotView> slots = map.slots();
     String border = "  +--------------+--------------+--------------+--------------+--------------+";
     int columns = 5;
-    for (int start = 0; start < slots.length; start += columns) {
+    for (int start = 0; start < slots.size(); start += columns) {
       System.out.println(border);
       System.out.print("  ");
       for (int offset = 0; offset < columns; offset++) {
         int index = start + offset;
-        String label = index < slots.length ? "Slot " + slots[index].getNo() : "";
+        String label = index < slots.size() ? "Slot " + slots.get(index).number() : "";
         System.out.print("| " + padCell(label));
       }
       System.out.println("|");
@@ -242,7 +247,7 @@ public class Menu {
       System.out.print("  ");
       for (int offset = 0; offset < columns; offset++) {
         int index = start + offset;
-        String code = index < slots.length ? slots[index].displayCode() : "";
+        String code = index < slots.size() ? slots.get(index).display() : "";
         System.out.print("| " + padCell(code));
       }
       System.out.println("|");
@@ -250,8 +255,7 @@ public class Menu {
     System.out.println(border);
     System.out.println();
 
-    int free = parking.freeSlots();
-    System.out.println("    " + (parking.getCapacity() - free) + " occupied, " + free + " free");
+    System.out.println("    " + map.occupied() + " occupied, " + map.free() + " free");
 
     StringBuilder legend = new StringBuilder();
     for (VehicleType type : VehicleType.values()) {
@@ -269,25 +273,24 @@ public class Menu {
   }
 
   private void summary() throws Exception {
-    int free = parking.freeSlots();
-    int capacity = parking.getCapacity();
+    ParkingSummary summary = parking.summary();
     System.out.println("  Parking summary");
     System.out.println();
-    System.out.println("    Slots       " + capacity + " total, " + free
-        + " free, " + (capacity - free) + " occupied");
-    System.out.println("    Vehicles    " + parking.parked() + " parked");
+    System.out.println("    Slots       " + summary.capacity() + " total, " + summary.free()
+        + " free, " + summary.occupied() + " occupied");
+    System.out.println("    Vehicles    " + summary.parked() + " parked");
 
     StringBuilder byType = new StringBuilder();
-    for (VehicleType type : VehicleType.values()) {
+    for (TypeCount type : summary.byType()) {
       if (byType.length() > 0) {
         byType.append(", ");
       }
-      byType.append(type.getDisplayName()).append(" ").append(parking.count(type));
+      byType.append(type.name()).append(" ").append(type.count());
     }
     System.out.println("    By type     " + byType);
-    System.out.println("    Tickets     " + parking.ticketCount() + " issued");
-    System.out.println("    Collection  Rs. " + parking.total() + " (all time)");
-    System.out.println("    Today       Rs. " + parking.todayTotal());
+    System.out.println("    Tickets     " + summary.ticketCount() + " issued");
+    System.out.println("    Collection  Rs. " + summary.total() + " (all time)");
+    System.out.println("    Today       Rs. " + summary.today());
   }
 
   private String owner() {

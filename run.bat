@@ -8,8 +8,12 @@ if /i "%~1"=="nopause" set "PAUSE_AFTER=0"
 
 set "JAVA=java"
 if not defined JAVA_HOME goto :java_ready
-set "JAVA_DIR=%JAVA_HOME:"=%"
-if exist "%JAVA_DIR%\bin\java.exe" set "JAVA=%JAVA_DIR%\bin\java.exe"
+set "JAVA_DIR=%JAVA_HOME%"
+set "JAVA_DIR=%JAVA_DIR:"=%"
+if "%JAVA_DIR:~-1%"=="\" set "JAVA_DIR=%JAVA_DIR:~0,-1%"
+if not exist "%JAVA_DIR%\bin\java.exe" goto :java_ready
+set "JAVA=%JAVA_DIR%\bin\java.exe"
+set "JAVA_HOME=%JAVA_DIR%"
 :java_ready
 
 "%JAVA%" -version >nul 2>nul
@@ -25,17 +29,8 @@ if errorlevel 1 (
   goto :finish
 )
 
-dir /b "lib\mysql-connector-j-*.jar" >nul 2>nul
-if errorlevel 1 (
-  echo.
-  echo MySQL Connector/J was not found in lib\.
-  echo Download mysql-connector-j-26.7.0.jar from:
-  echo   https://dev.mysql.com/downloads/connector/j/
-  set "RESULT=1"
-  goto :finish
-)
-
-"%JAVA%" -cp "out\classes;lib\*" parkease.Main
+echo Starting ParkEase backend. Press Ctrl+C to stop.
+"%JAVA%" -jar target\parkease.jar
 if errorlevel 1 set "RESULT=1"
 
 :finish

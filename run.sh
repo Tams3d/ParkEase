@@ -14,12 +14,5 @@ if ! command -v "$JAVA" >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! compgen -G "lib/mysql-connector-j-*.jar" >/dev/null; then
-  echo
-  echo "MySQL Connector/J was not found in lib/." >&2
-  echo "Download mysql-connector-j-26.7.0.jar from:" >&2
-  echo "  https://dev.mysql.com/downloads/connector/j/" >&2
-  exit 1
-fi
-
-"$JAVA" -cp "out/classes:lib/*" parkease.Main
+echo "Starting ParkEase backend. Press Ctrl+C to stop."
+"$JAVA" -jar target/parkease.jar

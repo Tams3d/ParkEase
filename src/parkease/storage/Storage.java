@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
-import parkease.exception.InvalidVehicleException;
 import parkease.exception.StorageException;
 import parkease.model.Ticket;
 import parkease.model.Vehicle;
@@ -117,7 +116,7 @@ public class Storage {
         int number = results.getInt("ticket_no");
         String plate = results.getString("vehicle_number");
         String owner = results.getString("owner_name");
-        VehicleType type = findType(results.getString("vehicle_type"));
+        VehicleType type = VehicleType.fromCode(results.getString("vehicle_type"));
         Vehicle vehicle = type.createVehicle(plate, owner);
 
         String joined = results.getString("slot_list");
@@ -134,15 +133,6 @@ public class Storage {
     } catch (Exception error) {
       throw new StorageException("Could not load active tickets.", error);
     }
-  }
-
-  private VehicleType findType(String code) throws InvalidVehicleException {
-    for (VehicleType type : VehicleType.values()) {
-      if (type.getCode().equalsIgnoreCase(code)) {
-        return type;
-      }
-    }
-    throw new InvalidVehicleException("Unknown vehicle type: " + code);
   }
 
   public boolean parked(String plate) throws StorageException {

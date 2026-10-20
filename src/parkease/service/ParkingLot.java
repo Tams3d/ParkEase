@@ -52,7 +52,7 @@ public class ParkingLot {
     return capacity;
   }
 
-  public Ticket park(Vehicle vehicle)
+  public synchronized Ticket park(Vehicle vehicle)
       throws ParkingFullException, DuplicateVehicleException, InvalidVehicleException,
           InvalidTicketException, InvalidSlotException, StorageException {
     if (vehicle == null) {
@@ -98,7 +98,7 @@ public class ParkingLot {
     return ticket;
   }
 
-  public Ticket exit(int number, double hours)
+  public synchronized Ticket exit(int number, double hours)
       throws InvalidTicketException, InvalidHoursException, InvalidSlotException, StorageException {
     Ticket ticket = tickets.get(number);
     if (ticket == null) {
@@ -155,37 +155,37 @@ public class ParkingLot {
         .orElse(null);
   }
 
-  public Ticket find(int number) {
+  public synchronized Ticket find(int number) {
     return tickets.get(number);
   }
 
-  public Slot[] getSlots() {
+  public synchronized Slot[] getSlots() {
     return Arrays.copyOf(slots, slots.length);
   }
 
-  public int freeSlots() {
+  public synchronized int freeSlots() {
     return (int) Arrays.stream(slots).filter(Slot::isFree).count();
   }
 
-  public int parked() {
+  public synchronized int parked() {
     return tickets.size();
   }
 
-  public int count(VehicleType type) {
+  public synchronized int count(VehicleType type) {
     return (int) tickets.values().stream()
         .filter(ticket -> ticket.getVehicle().getType() == type)
         .count();
   }
 
-  public int total() throws StorageException {
+  public synchronized int total() throws StorageException {
     return storage.total();
   }
 
-  public int todayTotal() throws StorageException {
+  public synchronized int todayTotal() throws StorageException {
     return storage.todayTotal();
   }
 
-  public int ticketCount() throws StorageException {
+  public synchronized int ticketCount() throws StorageException {
     return storage.ticketCount();
   }
 }

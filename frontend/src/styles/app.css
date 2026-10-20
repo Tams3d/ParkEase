@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+@import "tw-animate-css";
+
+@import "shadcn/tailwind.css";
+
+/* IBM Plex Sans (dealt design-taste-frontend) + IBM Plex Mono (data IDs) */
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+
+/* Vercel / Geist palette (exact) — replaces earlier custom tokens */
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #000000;
+  --color-card: #ffffff;
+  --color-card-foreground: #000000;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #000000;
+  --color-primary: #000000;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #fafafa;
+  --color-secondary-foreground: #000000;
+  --color-muted: #f2f2f2;
+  --color-muted-foreground: #666666;
+  --color-accent: #f2f2f2;
+  --color-accent-foreground: #000000;
+  --color-destructive: #e00;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #eaeaea;
+  --color-input: #eaeaea;
+  --color-ring: #0070f3;
+  --radius: 0.625rem;
+
+  /* Vercel scale data hues */
+  --color-positive: #00a95c;
+  --color-positive-foreground: #003d20;
+  --color-positive-soft: #d7f7e0;
+  --color-negative: #e00;
+  --color-negative-foreground: #9b0000;
+  --color-negative-soft: #fdecee;
+  --color-warning: #f5a623;
+  --color-warning-foreground: #6f4b0b;
+  --color-warning-soft: #fdf2d2;
+  --color-info: #0070f3;
+  --color-info-soft: #e6f0fd;
+
+  /* Sidebar / chrome (Vercel geist-background-secondary) */
+  --color-sidebar: #fafafa;
+  --color-sidebar-foreground: #000000;
+  --color-sidebar-accent: #0070f3;
+  --color-sidebar-accent-foreground: #ffffff;
+  --color-sidebar-border: #eaeaea;
+  --color-sidebar-primary: #0070f3;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-ring: #0070f3;
+
+  /* Fonts */
+  --font-sans: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    font-size: 15px;
+    color-scheme: light;
+    @apply antialiased;
+  }
+
+  body {
+    @apply min-h-screen bg-background text-foreground;
+  }
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+}
+
+/* Framed-sheet shell: tinted L-frame + white inset sheet */
+#app-shell {
+  @apply flex min-h-screen;
+}
+
+#sidebar {
+  @apply flex flex-col w-[228px] shrink-0 bg-sidebar border-r border-sidebar-border;
+}
+
+#top-bar {
+  @apply h-[48px] flex items-center justify-between px-4 border-b border-sidebar-border bg-sidebar;
+}
+
+#sheet {
+  @apply flex-1 overflow-auto bg-card;
+}
+
+#sheet-inner {
+  @apply mx-auto max-w-3xl p-6;
+}
+
+/* Active nav underline (not pill) */
+.nav-link {
+  @apply flex items-center gap-3 px-3 py-2 text-sm transition-colors;
+}
+
+.nav-link-active {
+  @apply text-foreground font-medium border-l-2 border-info;
+}

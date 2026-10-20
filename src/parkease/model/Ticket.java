@@ -32,13 +32,13 @@ public class Ticket {
     this.entry = new Date(entry.getTime());
   }
 
-  public static int takeNextNumber() {
+  public static synchronized int takeNextNumber() {
     int currentNumber = nextNumber;
     nextNumber = nextNumber + 1;
     return currentNumber;
   }
 
-  public static void continueFrom(int lastNumber) {
+  public static synchronized void continueFrom(int lastNumber) {
     if (lastNumber >= nextNumber) {
       nextNumber = lastNumber + 1;
     }
@@ -90,5 +90,9 @@ public class Ticket {
 
   public int getCharge() {
     return charge;
+  }
+
+  public boolean isActive() {
+    return active;
   }
 }

@@ -1,106 +1,140 @@
 # ParkEase
 
-ParkEase is a Java console application for a 20-slot parking lot. It handles entry, exit
-and billing for bikes, cars and trucks, and stores vehicles, tickets and slot state in MySQL
-through JDBC.
+ParkEase is a full-stack parking application for a 20-slot lot. It handles entry, exit
+and billing for bikes, cars and trucks. A Spring Boot backend owns the domain service and
+MySQL persistence. A plain-text CLI and a TanStack Start web app both use the same REST
+API, so changes made in one client appear in the other.
 
-For API details, class and object relationships, Java and MySQL data types, and exception
-behavior, see [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md).
+For class relationships, API details and database behavior, see
+[TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md).
+
+## Architecture
+
+```mermaid
+flowchart TD
+    CLI["CLI - Menu and RemoteParkingClient"] -->|HTTP JSON| API["Spring Boot REST API"]
+    WEB["Web - TanStack Start"] -->|HTTP JSON| API
+    API --> Service["ParkingLot"]
+    Service --> Models["Vehicle / Ticket / Slot"]
+    Service --> Storage["Storage"]
+    Storage --> Database["Database"]
+    Database -->|JDBC| MySQL["MySQL"]
+```
+
+There is one `ParkingLot` bean per backend process. The CLI does not open MySQL directly;
+it sends HTTP requests to the backend. The web app uses the same endpoints.
 
 ## Requirements
 
 - JDK 17 LTS or newer
+- Maven 3.9 wrapper, included in the repository
 - MySQL 8.4 LTS or 9.7 LTS
-- MySQL Connector/J 26.7.0
+- Bun 1.3 or newer for the web app
 
-If `java -version` is older than 17, set `JAVA_HOME` to a JDK 17 LTS or newer installation before running the scripts.
+If `java -version` is older than 17, set `JAVA_HOME` to a JDK 17 or newer installation
+before running the scripts.
 
-## Build
+## Quick start
 
-1. Put the MySQL driver here:
+### 1. Configure MySQL
 
-   ```text
-   lib/mysql-connector-j-26.7.0.jar
-   ```
-
-   Download it from <https://dev.mysql.com/downloads/connector/j/>.
-
-2. Compile the source from the project folder.
-
-   Windows:
-
-   ```bat
-   build.bat
-   ```
-
-   macOS / Linux:
-
-   ```bash
-   chmod +x build.sh
-   ./build.sh
-   ```
-
-   The compiled classes are written to `out/classes`.
-
-   The Windows batch files pause when they finish so errors stay visible. Use
-   `build.bat nopause` or `run.bat nopause` to skip the pause.
-
-## Configure MySQL
-
-The default connection is:
+Start MySQL. Copy `.env.example` to `.env` and set the connection values:
 
 ```text
-URL      jdbc:mysql://localhost:3306/parkease?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Kolkata&characterEncoding=UTF-8
-User     root
-Password (empty)
+PARKEASE_DB_URL=jdbc:mysql://localhost:3306/parkease?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Kolkata&characterEncoding=UTF-8
+PARKEASE_DB_USER=root
+PARKEASE_DB_PASSWORD=
+PARKEASE_API_PORT=8080
+PARKEASE_API_URL=http://localhost:8080
 ```
 
-Start MySQL before running the app. For local development, copy `.env.example` to `.env`.
+The `.env` file is ignored by Git. Environment variables override `.env`. The backend
+creates the database, tables and 20 slot rows on first startup.
+
+### 2. Build and start the backend
 
 Windows:
 
 ```bat
-copy .env.example .env
-```
-
-macOS / Linux:
-
-```bash
-cp .env.example .env
-```
-
-Then set these values in `.env`:
-
-```text
-PARKEASE_DB_URL
-PARKEASE_DB_USER
-PARKEASE_DB_PASSWORD
-```
-
-The `.env` file is ignored by Git. In production, do not ship `.env`; set the same variables
-in the deployment environment. Real environment variables override `.env`.
-
-## Run
-
-Start the app from the project folder.
-
-Windows:
-
-```bat
+build.bat
 run.bat
 ```
 
 macOS / Linux:
 
 ```bash
-chmod +x run.sh
+chmod +x build.sh run.sh run-cli.sh mvnw
+./build.sh
 ./run.sh
 ```
 
-`run.bat` and `run.sh` build the project and then start the app. The first run creates the
-`parkease` database, its tables and the 20 slots.
+The backend listens on `http://localhost:8080` by default. Override the port with
+`PARKEASE_API_PORT`.
 
-## Menu
+The Windows scripts pause when they finish so errors stay visible. Use
+`build.bat nopause` or `run.bat nopause` to skip the pause.
+
+### 3. Start the CLI
+
+Keep the backend running, then open another terminal:
+
+Windows:
+
+```bat
+run-cli.bat
+```
+
+macOS / Linux:
+
+```bash
+./run-cli.sh
+```
+
+The CLI uses `PARKEASE_API_URL`, or the default `http://localhost:8080`. You can also pass
+the address directly:
+
+```bash
+./mvnw -q compile exec:java -Dexec.args="--api=http://localhost:8080"
+```
+
+### 4. Start the web app
+
+Keep the backend running, then:
+
+```bash
+cd frontend
+bun install
+bun run dev
+```
+
+Open <http://localhost:5173>. The web API client defaults to
+`http://localhost:8080`. To use a different backend, copy `frontend/.env.example` to
+`frontend/.env` and set `VITE_API_URL`.
+
+## Build
+
+The Maven wrapper downloads Maven 3.9.9 on first use. No Maven installation is required.
+
+Windows:
+
+```bat
+mvnw.cmd clean package
+```
+
+macOS / Linux:
+
+```bash
+./mvnw clean package
+```
+
+The executable backend jar is written to `target/parkease.jar`. To skip tests while
+building a local artifact:
+
+```bash
+./mvnw -DskipTests package
+```
+
+## CLI menu
 
 ```text
 1 - Park a vehicle
@@ -110,50 +144,75 @@ chmod +x run.sh
 5 - Quit
 ```
 
-The park flow shows vehicle rates and slot requirements before entry, and the ticket
-number is required for exit. The slot map uses a 5-column grid. `FREE` means the slot
-is available; occupied cells show the plate and a type code: `B` bike, `C` car, `T` truck.
+The park flow shows vehicle rates and slot requirements before entry. The ticket number is
+required for exit. The slot map uses a 5-column grid. `FREE` means the slot is available;
+occupied cells show the plate and a type code: `B` bike, `C` car, `T` truck.
 
-## Architecture
+## REST API
 
-```mermaid
-flowchart TD
-    Main["Main"] --> Menu["Console Menu"]
-    Menu --> Validator["Plate Validator"]
-    Menu --> Service["ParkingLot"]
-    Service --> Models["Vehicle / Ticket / Slot"]
-    Service --> Storage["Storage"]
-    Storage --> Database["Database"]
-    Database -->|JDBC| MySQL["MySQL"]
+All endpoints are under `/api` and use JSON. Errors use `{ "message": "..." }`.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/vehicle-types` | Vehicle codes, names, rates and slot counts |
+| `GET` | `/api/slots` | Capacity, free/occupied counts and every slot |
+| `GET` | `/api/summary` | Slot, vehicle, ticket and collection totals |
+| `POST` | `/api/tickets` | Park a vehicle and issue a ticket |
+| `GET` | `/api/tickets/{number}` | Return one active ticket |
+| `POST` | `/api/tickets/{number}/exit` | Close, bill and free a ticket |
+
+Park request:
+
+```json
+{
+  "vehicleType": "CAR",
+  "plate": "TN37AB1234",
+  "owner": "Asha"
+}
 ```
 
-## Parking flow
+Exit request:
 
-```mermaid
-flowchart TD
-    Start(["Start"]) --> Type["Choose vehicle type"]
-    Type --> Plate{"Valid plate?"}
-    Plate -->|No| PlateError["InvalidPlateException"]
-    PlateError --> Type
-    Plate -->|Yes| Duplicate{"Active ticket?"}
-    Duplicate -->|Yes| DuplicateError["DuplicateVehicleException"]
-    DuplicateError --> Type
-    Duplicate -->|No| Space{"Slots available?"}
-    Space -->|No| Full["ParkingFullException"]
-    Full --> Type
-    Space -->|Yes| Create["Create ticket"]
-    Create --> Save["Save state"]
-    Save --> Exit["Exit and bill"]
-    Exit --> Release["Release slots"]
+```json
+{
+  "hours": 2.5
+}
 ```
+
+Example ticket response:
+
+```json
+{
+  "ticketNo": 1001,
+  "number": "T-1001",
+  "plate": "TN37AB1234",
+  "owner": "Asha",
+  "vehicleType": "CAR",
+  "vehicleTypeName": "Car",
+  "slots": [1],
+  "entryMillis": 1792501850357,
+  "hours": 0,
+  "charge": 0,
+  "active": true
+}
+```
+
+Status codes:
+
+| Status | Meaning |
+|--------|---------|
+| `400` | Invalid plate, owner, vehicle type, hours or JSON body |
+| `404` | Active ticket not found |
+| `409` | Duplicate plate, full lot or slot conflict |
+| `500` | MySQL or unexpected backend failure |
 
 ## Parking rules
 
-| Vehicle | Menu | Rate | Slots | Cap |
-|---------|------|------|-------|-----|
-| Bike | `1` | Rs. 10/hour | 1 | 8 hours |
-| Car | `2` | Rs. 30/hour | 1 | 8 hours |
-| Truck | `3` | Rs. 60/hour | 2 consecutive | 8 hours |
+| Vehicle | Rate | Slots | Cap |
+|---------|------|-------|-----|
+| Bike | Rs. 10/hour | 1 | 8 hours |
+| Car | Rs. 30/hour | 1 | 8 hours |
+| Truck | Rs. 60/hour | 2 consecutive | 8 hours |
 
 Examples:
 
@@ -169,11 +228,10 @@ Other rules:
 - The billable time is capped at 8 hours.
 - A truck needs two consecutive free slots.
 - A plate cannot have two active tickets.
-- When no slot is free, the app throws `ParkingFullException` and the menu prints the error.
-- Ticket numbers start at `T-1001`. A static counter in `Ticket` supplies the next number
-  and continues from `MAX(ticket_no)` after a restart.
-- Entry and exit times use IST and AM/PM.
-- Dates use `dd-MMM-yyyy`.
+- Parking and slot updates use one MySQL transaction.
+- Ticket numbers start at `T-1001`. The counter continues from `MAX(ticket_no)` after a
+  restart.
+- Entry and exit times use IST.
 - Charges use `Rs.`.
 
 ## Number plates
@@ -217,7 +275,7 @@ Invalid plates raise `InvalidPlateException`.
 
 ## Database
 
-The app creates and uses three tables:
+The backend creates and uses three tables:
 
 | Table | Data |
 |-------|------|
@@ -228,11 +286,12 @@ The app creates and uses three tables:
 Parking and exit update the ticket and slot rows in one transaction. On restart, active
 tickets load from MySQL and the ticket counter continues from `MAX(ticket_no)`.
 
-`sql/schema.sql` contains the schema for manual setup. The app creates the schema at startup.
+`sql/schema.sql` contains the schema for manual setup. The backend creates the schema at
+startup when `createDatabaseIfNotExist=true` is present.
 
 ## Exceptions
 
-Each exception is a separate class in `src/parkease/exception`. All of them extend
+Each exception is a separate checked class in `src/parkease/exception`. All of them extend
 `Exception`.
 
 | Exception | Raised when |
@@ -243,11 +302,13 @@ Each exception is a separate class in `src/parkease/exception`. All of them exte
 | `InvalidOwnerException` | The owner name is missing |
 | `DuplicateVehicleException` | The plate already has an active ticket |
 | `InvalidTicketException` | The ticket number is unknown, closed or has bad ticket data |
-| `InvalidHoursException` | The hours value is zero or negative |
+| `InvalidHoursException` | The hours value is zero, negative, NaN or infinite |
 | `InvalidSlotException` | A slot is occupied, belongs to another ticket or is out of range |
 | `StorageException` | The database setup, query or connection fails |
+| `ApiException` | The CLI cannot reach the backend or receives an HTTP/JSON error |
 
-The menu catches these exceptions and prints the message.
+The CLI catches these exceptions and prints the message. The REST controller maps domain
+errors to HTTP statuses through `ApiExceptionHandler`.
 
 ## Project layout
 
@@ -256,65 +317,67 @@ ParkEase/
 |-- README.md
 |-- TECHNICAL_GUIDE.md
 |-- LICENSE
-|-- .gitignore
+|-- pom.xml
+|-- mvnw
+|-- mvnw.cmd
+|-- .mvn/
 |-- .env.example
 |-- build.bat
-|-- run.bat
 |-- build.sh
+|-- run.bat
 |-- run.sh
-|-- lib/
-|   `-- README.md
+|-- run-cli.bat
+|-- run-cli.sh
 |-- sql/
 |   `-- schema.sql
-`-- src/
-    `-- parkease/
-        |-- Main.java
-        |-- console/
-        |   `-- Menu.java
-        |-- exception/
-        |   |-- DuplicateVehicleException.java
-        |   |-- InvalidHoursException.java
-        |   |-- InvalidOwnerException.java
-        |   |-- InvalidPlateException.java
-        |   |-- InvalidSlotException.java
-        |   |-- InvalidTicketException.java
-        |   |-- InvalidVehicleException.java
-        |   |-- ParkingFullException.java
-        |   `-- StorageException.java
-        |-- model/
-        |   |-- BikeVehicle.java
-        |   |-- CarVehicle.java
-        |   |-- Chargeable.java
-        |   |-- Slot.java
-        |   |-- Ticket.java
-        |   |-- TruckVehicle.java
-        |   |-- Vehicle.java
-        |   `-- VehicleType.java
-        |-- service/
-        |   `-- ParkingLot.java
-        |-- storage/
-        |   |-- Database.java
-        |   `-- Storage.java
-        `-- validation/
-            `-- Plate.java
+|-- src/
+|   |-- main/resources/application.properties
+|   `-- parkease/
+|       |-- Main.java
+|       |-- ParkEaseApplication.java
+|       |-- api/
+|       |   |-- ApiDtos.java
+|       |   |-- ApiExceptionHandler.java
+|       |   `-- ParkingController.java
+|       |-- client/
+|       |   |-- ParkingClient.java
+|       |   |-- RemoteParkingClient.java
+|       |   |-- SlotMap.java
+|       |   |-- SlotView.java
+|       |   |-- ParkingSummary.java
+|       |   `-- TypeCount.java
+|       |-- config/
+|       |   |-- ParkingConfig.java
+|       |   `-- WebConfig.java
+|       |-- console/
+|       |   `-- Menu.java
+|       |-- exception/
+|       |-- model/
+|       |-- service/
+|       |-- storage/
+|       `-- validation/
+`-- frontend/
+    |-- package.json
+    |-- bun.lock
+    |-- vite.config.ts
+    `-- src/
+        |-- components/ui.tsx
+        |-- lib/api.ts
+        |-- routes/
+        `-- styles/app.css
 ```
-
-The source is split into `console`, `exception`, `model`, `service`, `storage` and
-`validation` packages. `Vehicle` is the abstract parent class of `BikeVehicle`, `CarVehicle`
-and `TruckVehicle`; it implements the `Chargeable` interface. `VehicleType` holds the rate,
-slot count and database code for each type.
-
-The Connector/J jar and the local `.env` file are ignored by Git.
 
 ## Common problems
 
 | Problem | Fix |
 |---------|-----|
 | `Access denied for user` | Set the password in `.env` or `PARKEASE_DB_PASSWORD`. |
-| `No suitable driver found` | Put the Connector/J jar in `lib/`. |
 | `Communications link failure` | Start MySQL and check the port in `PARKEASE_DB_URL`. |
 | `Unknown database 'parkease'` | Keep `createDatabaseIfNotExist=true` or run `sql/schema.sql`. |
 | `Public Key Retrieval is not allowed` | Keep `allowPublicKeyRetrieval=true` in the URL. |
+| CLI prints `Could not reach the backend` | Start the backend and check `PARKEASE_API_URL`. |
+| Web page shows a network error | Check `VITE_API_URL` and the backend CORS port. |
+| `Port 5173 is already in use` | Stop the other Vite server or change `server.port` in `frontend/vite.config.ts`. |
 
 ## License
 

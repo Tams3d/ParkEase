@@ -1,11 +1,5 @@
-# MySQL Connector/J
+# Legacy driver folder
 
-Put the JDBC driver in this folder:
-
-```text
-lib/mysql-connector-j-26.7.0.jar
-```
-
-Download it from <https://dev.mysql.com/downloads/connector/j/>.
-
-Git ignores the jar. This file keeps the folder in the repository.
+The Maven build downloads MySQL Connector/J automatically through the
+`com.mysql:mysql-connector-j` dependency. This folder is no longer used by the build or
+run scripts. It is kept only for an older local jar.

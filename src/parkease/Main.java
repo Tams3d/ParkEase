@@ -1,27 +1,39 @@
 package parkease;
 
 import java.util.Scanner;
+import parkease.client.RemoteParkingClient;
+import parkease.config.Environment;
 import parkease.console.Menu;
-import parkease.service.ParkingLot;
-import parkease.storage.Storage;
 
 public class Main {
+
   public static void main(String[] args) {
     try {
-      ParkingLot parking = new ParkingLot(new Storage());
-      System.out.println("MySQL connected.");
-
+      String apiUrl = apiUrl(args);
       Scanner input = new Scanner(System.in);
       try {
-        new Menu(parking, input).start();
+        new Menu(new RemoteParkingClient(apiUrl), input).start();
       } finally {
         input.close();
       }
     } catch (Exception error) {
       System.out.println();
       System.out.println("Could not start ParkEase: " + error.getMessage());
-      System.out.println("Check .env, environment variables and README.md.");
+      System.out.println("Start the backend and check PARKEASE_API_URL.");
       System.exit(1);
     }
+  }
+
+  private static String apiUrl(String[] args) throws Exception {
+    String value = Environment.value("PARKEASE_API_URL", null);
+    for (String arg : args) {
+      if (arg != null && arg.startsWith("--api=")) {
+        value = arg.substring("--api=".length());
+      }
+    }
+    if (value == null || value.trim().isEmpty()) {
+      return "http://localhost:8080";
+    }
+    return value.trim();
   }
 }

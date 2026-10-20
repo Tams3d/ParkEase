@@ -1,35 +1,60 @@
 # ParkEase Technical Guide
 
-ParkEase is a console parking application. It stores vehicles, tickets and slot state in
-MySQL through JDBC.
+ParkEase is a full-stack parking application. A Spring Boot backend owns the domain
+service and MySQL persistence. The plain-text CLI and the TanStack Start web client both
+use the backend REST API, so they read and write the same slot and ticket state.
 
 ## Runtime
 
 | Item | Value |
 |------|-------|
 | Java | JDK 17 LTS or newer |
+| Backend | Spring Boot 3.3.2, Spring MVC, embedded Tomcat |
+| Build | Maven 3.9 wrapper (`mvnw`, `mvnw.cmd`) |
 | Database | MySQL 8.4 LTS or 9.7 LTS |
-| JDBC driver | MySQL Connector/J 26.7.0 |
-| Interface | Console, plain text |
+| JDBC driver | MySQL Connector/J, managed by Spring Boot |
+| CLI | Java HTTP client, plain text |
+| Web | TanStack Start, React 19, Vite, Tailwind CSS 4, Bun |
+| Backend port | `8080` by default (`PARKEASE_API_PORT`) |
+| Web dev port | `5173` by default |
 | Capacity | Fixed by `ParkingLot.capacity` |
 | Currency | INR, integer charge |
 | Time zone | Asia/Kolkata (IST) |
 | Ticket format | `T-<number>` |
 | Plate format | Indian plate format after normalization |
 
+## Build and run
+
+```text
+mvnw.cmd clean package          Windows
+./mvnw clean package            macOS / Linux
+java -jar target/parkease.jar   Start the backend
+
+mvnw.cmd -q compile exec:java   CLI from compiled classes (backend must be running)
+```
+
+The repository includes `build.bat`, `build.sh`, `run.bat`, `run.sh`,
+`run-cli.bat` and `run-cli.sh`. The backend needs the environment values documented in
+`.env.example`; the CLI needs the backend to be running.
+
 ## Packages
 
 | Package | Classes | Responsibility |
 |---------|---------|----------------|
-| `parkease` | `Main` | Starts the application and handles startup failure |
-| `parkease.console` | `Menu` | Reads input, prints output, calls the service |
+| `parkease` | `Main`, `ParkEaseApplication` | CLI entry point and Spring Boot entry point |
+| `parkease.api` | `ParkingController`, `ApiDtos`, `ApiExceptionHandler` | REST endpoints, JSON records and HTTP error mapping |
+| `parkease.config` | `Environment`, `ParkingConfig`, `WebConfig` | `.env`/environment lookup, `ParkingLot` bean and CORS configuration |
+| `parkease.client` | `ParkingClient`, `RemoteParkingClient`, `SlotMap`, `SlotView`, `ParkingSummary`, `TypeCount` | CLI-facing HTTP gateway and view records |
+| `parkease.console` | `Menu` | Reads input, prints output, calls `ParkingClient` |
 | `parkease.model` | `Chargeable`, `Vehicle`, `BikeVehicle`, `CarVehicle`, `TruckVehicle`, `VehicleType`, `Slot`, `Ticket` | Domain objects and billing contract |
 | `parkease.service` | `ParkingLot` | Slot allocation, ticket creation and exit |
 | `parkease.storage` | `Storage`, `Database` | MySQL persistence and JDBC configuration |
 | `parkease.validation` | `Plate` | Plate validation and normalization |
-| `parkease.exception` | Exception classes | Validation, parking and storage failures |
+| `parkease.exception` | Exception classes | Validation, parking, storage and API failures |
 
-`Database` and the concrete vehicle subclasses are package-private.
+`Database` and the concrete vehicle subclasses are package-private. `ApiDtos` is a
+container for public JSON records. The REST controller is the only web adapter that
+touches `ParkingLot` directly.
 
 ## Class model
 
@@ -66,6 +91,7 @@ classDiagram
         +getRate() int
         +getSlotCount() int
         +getCode() String
+        +fromCode(String code) VehicleType
         +createVehicle(String plate, String owner) Vehicle
     }
 
@@ -93,6 +119,7 @@ classDiagram
         +number() String
         +getSlots() int[]
         +slotText() String
+        +isActive() boolean
     }
 
     class ParkingLot {
@@ -101,11 +128,33 @@ classDiagram
         +park(Vehicle vehicle) Ticket
         +exit(int number, double hours) Ticket
         +getSlots() Slot[]
+        +find(int number) Ticket
     }
 
+    class ParkingController {
+        +vehicleTypes() List
+        +slots() SlotMapResponse
+        +summary() SummaryResponse
+        +park(ParkRequest request) TicketResponse
+        +ticket(int number) TicketResponse
+        +exit(int number, ExitRequest request) TicketResponse
+    }
+
+    class ParkingClient {
+        <<interface>>
+        +capacity() int
+        +park(Vehicle vehicle) Ticket
+        +exit(int number, double hours) Ticket
+        +find(int number) Ticket
+        +slots() SlotMap
+        +summary() ParkingSummary
+    }
+
+    class RemoteParkingClient
+    class Menu
+    class ParkEaseApplication
     class Storage
     class Database
-    class Menu
     class Plate
 
     Chargeable <|.. Vehicle
@@ -119,7 +168,11 @@ classDiagram
     ParkingLot --> Ticket : tracks
     ParkingLot --> Storage : persists through
     Storage --> Database : connects through
-    Menu --> ParkingLot : calls
+    ParkingController --> ParkingLot : calls
+    ParkEaseApplication --> ParkingLot : creates bean
+    RemoteParkingClient ..|> ParkingClient
+    RemoteParkingClient --> ParkingController : HTTP JSON
+    Menu --> ParkingClient : calls
     Menu --> Plate : validates
 ```
 
@@ -127,57 +180,178 @@ classDiagram
 
 | Class | State | Created by |
 |-------|-------|------------|
-| `Main` | None | JVM |
-| `Menu` | `ParkingLot`, `Scanner`, `Plate`, date formatter, interactive flag | `Main` |
-| `ParkingLot` | `Slot[]`, `LinkedHashMap<Integer, Ticket>`, `Storage` | `Main` |
-| `Storage` | `Database`, date format, time zone, SQL strings | `Main` or a test caller |
+| `ParkEaseApplication` | Spring application context | JVM |
+| `Main` | Backend URL, `Scanner` | JVM |
+| `Menu` | `ParkingClient`, `Scanner`, `Plate`, date formatter, interactive flag | `Main` |
+| `RemoteParkingClient` | HTTP client, Jackson mapper, base URL | `Main` |
+| `ParkingController` | `ParkingLot`, `Plate` | Spring component scan |
+| `ParkingLot` | `Slot[]`, `LinkedHashMap<Integer, Ticket>`, `Storage` | `ParkingConfig` bean method |
+| `Storage` | `Database`, date format, time zone, SQL strings | `ParkingConfig` |
 | `Database` | JDBC URL and configuration lookup | `Storage` |
-| `Plate` | None | `Menu` |
+| `Environment` | None; reads `.env` and environment variables | Static helper |
+| `Plate` | None | `Menu` or `ParkingController` |
 | `Vehicle` | Plate, owner, vehicle type | Through a subclass |
 | `BikeVehicle` | Inherited vehicle state | `VehicleType.createVehicle` |
 | `CarVehicle` | Inherited vehicle state | `VehicleType.createVehicle` |
 | `TruckVehicle` | Inherited vehicle state | `VehicleType.createVehicle` |
 | `VehicleType` | Display name, hourly rate, slot count, database code | Enum constants |
 | `Slot` | Number, plate, vehicle type, ticket number | `ParkingLot` constructor |
-| `Ticket` | Number, vehicle, slot numbers, entry, hours, charge, active flag | `ParkingLot.park` or `Storage.active` |
-| Exception classes | Message and optional cause | Model, service, validation and storage code |
+| `Ticket` | Number, vehicle, slot numbers, entry, hours, charge, active flag | `ParkingLot.park`, `Storage.active` or `RemoteParkingClient` |
+| `SlotMap`, `SlotView`, `ParkingSummary`, `TypeCount` | Immutable CLI view records | `RemoteParkingClient` |
+| `ApiDtos` records | Immutable JSON request and response records | Controller and Jackson |
+| Exception classes | Message and optional cause | Model, service, validation, API and storage code |
 
-`Ticket.nextNumber` is static. `ParkingLot.capacity` is static final. `Chargeable.dailyCapHours`
-is an interface constant.
+`Ticket.nextNumber` is static. `ParkingLot.capacity` is static final.
+`Chargeable.dailyCapHours` is an interface constant. `ParkingLot` uses synchronized methods
+so concurrent REST requests cannot corrupt slot state.
 
 ## Runtime flow
 
-- Startup: `Main` creates `Storage`, then `ParkingLot`. The `ParkingLot` constructor builds
-  the slot table, initializes the schema, seeds slot rows, resumes ticket numbering and
-  loads active tickets.
+- Backend startup: `ParkEaseApplication` starts Spring Boot. `ParkingConfig` creates a
+  `Storage` and a `ParkingLot`. The `ParkingLot` constructor builds the slot table,
+  initializes the schema, seeds slot rows, resumes ticket numbering and loads active
+  tickets. Spring MVC exposes the REST API on `PARKEASE_API_PORT`.
+- CLI startup: `Main` reads `PARKEASE_API_URL` or `--api=...`, creates a
+  `RemoteParkingClient` and starts `Menu`. The CLI never opens MySQL directly.
 - Park: `Menu` validates the plate, `VehicleType` creates the vehicle, and
-  `ParkingLot.park` allocates slots, creates the ticket, saves it, marks the slots and
-  updates the active map.
-- Exit: `ParkingLot.exit` finds the ticket, validates hours, applies rounding and the daily
-  cap, saves the close, closes the ticket, frees the slots and removes the ticket.
+  `RemoteParkingClient.park` sends `POST /api/tickets`. `ParkingController` calls
+  `ParkingLot.park`, which allocates slots, creates the ticket, saves it, marks the slots
+  and updates the active map.
+- Exit: `RemoteParkingClient.exit` sends `POST /api/tickets/{number}/exit`.
+  `ParkingLot.exit` finds the ticket, validates hours, applies rounding and the daily cap,
+  saves the close, closes the ticket, frees the slots and removes the ticket.
+- Web: TanStack Start routes call the same REST API from the browser (and during SSR).
+  A successful park or exit is visible to the CLI and web on the next read.
+
+## REST API
+
+The backend serves JSON under `/api`. Errors use `{ "message": "..." }`.
+
+| Method | Path | Body | Success | Purpose |
+|--------|------|------|---------|---------|
+| `GET` | `/api/vehicle-types` | None | `200` list | Vehicle codes, names, rates and slot counts |
+| `GET` | `/api/slots` | None | `200` `SlotMapResponse` | Capacity, free and occupied counts, and every slot |
+| `GET` | `/api/summary` | None | `200` `SummaryResponse` | Slot counts, active vehicles, ticket count and collections |
+| `POST` | `/api/tickets` | `ParkRequest` | `201` `TicketResponse` | Park a vehicle and issue a ticket |
+| `GET` | `/api/tickets/{number}` | None | `200` `TicketResponse` | Return one active ticket |
+| `POST` | `/api/tickets/{number}/exit` | `ExitRequest` | `200` `TicketResponse` | Close a ticket, bill it and free its slots |
+
+`ParkRequest` is `{ "vehicleType": "CAR", "plate": "TN37AB1234", "owner": "Asha" }`.
+`ExitRequest` is `{ "hours": 2.5 }`. `TicketResponse` contains `ticketNo`, `number`,
+`plate`, `owner`, `vehicleType`, `vehicleTypeName`, `slots`, `entryMillis`, `hours`,
+`charge` and `active`. `SlotMapResponse` contains `capacity`, `free`, `occupied` and a
+`slots` list of `{ "number": 1, "free": true, "display": "FREE" }`.
+
+HTTP status mapping:
+
+| Status | Conditions |
+|--------|------------|
+| `400` | Invalid plate, owner, vehicle type, hours or JSON body |
+| `404` | Active ticket not found |
+| `409` | Duplicate plate, full lot, or slot ownership conflict |
+| `500` | MySQL or unexpected backend failure |
+
+CORS allows `http://localhost:3000`, `http://127.0.0.1:3000`,
+`http://localhost:5173` and `http://127.0.0.1:5173` for `/api/**`.
+
+## Web application
+
+The `frontend` directory is a TanStack Start application scaffolded from the official
+`start-basic` example. It uses Vite, React, file-based TanStack Router routes, Tailwind CSS
+and Bun.
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Dashboard with summary cards, slot map and collection totals |
+| `/park` | Vehicle type, plate and owner form; issues a ticket |
+| `/exit` | Ticket number and hours; closes and bills the ticket |
+| `/slots` | Full slot map with refresh and type legend |
+| `/summary` | Slot, vehicle, ticket and collection summary |
+| `/tickets/$ticketNo` | Active ticket detail |
+
+`frontend/src/lib/api.ts` is the only HTTP layer. It reads `VITE_API_URL`, defaults to
+`http://localhost:8080`, maps the JSON records and throws the backend `message` on errors.
+The route components fetch after hydration, so development can start the web client even
+when the backend is temporarily unavailable; the error panel shows the failure.
+
+```text
+cd frontend
+bun install
+bun run dev       Development server on port 5173
+bun run build     Production build plus TypeScript check
+bun run start     Serve the Nitro production output
+```
+
+## Synchronization model
+
+`ParkingConfig` creates exactly one `ParkingLot` bean per backend process. All REST
+requests use that bean, and the bean's mutating and read methods are synchronized.
+`RemoteParkingClient` does not create a second parking lot or open MySQL; it only sends
+HTTP requests. As a result, a park or exit from the CLI is visible in the web summary and
+slot map, and the reverse is also true.
+
+Starting a second backend against the same database is supported by the database schema,
+but the in-memory slot tables would diverge. Run one backend per database during normal
+use.
 
 ## API reference
 
 Public methods are listed below. Custom exceptions are checked; callers must catch them
 or declare them with `throws`.
 
+### `ParkEaseApplication`
+
+| Method | Returns | Throws | Purpose |
+|--------|---------|--------|---------|
+| `main(String[] args)` | `void` | None declared | Starts the Spring Boot backend and REST API |
+
 ### `Main`
 
 | Method | Returns | Throws | Purpose |
 |--------|---------|--------|---------|
-| `main(String[] args)` | `void` | None declared | Creates `Storage` and `ParkingLot`, starts `Menu`, closes `Scanner`, and exits with failure status on startup error |
+| `main(String[] args)` | `void` | None declared | Reads the backend URL, creates `RemoteParkingClient`, starts `Menu`, closes `Scanner`, and exits with failure status on startup error |
 
-`Main` catches `Exception` and prints a failure message.
+`Main` accepts `PARKEASE_API_URL` from the environment or `.env`, or
+`--api=http://host:port`. The default is `http://localhost:8080`. It catches `Exception`
+and prints a failure message.
 
 ### `Menu`
 
 | Member | Returns | Throws | Purpose |
 |--------|---------|--------|---------|
-| `Menu(ParkingLot parking, Scanner reader)` | Constructor | None | Stores the service and input source; configures the IST formatter |
-| `start()` | `void` | None declared | Prints the header and menu, reads choices, calls park, exit, slot map or summary |
+| `Menu(ParkingClient parking, Scanner reader)` | Constructor | None | Stores the client and input source; configures the IST formatter |
+| `start()` | `void` | `Exception` | Prints the header and menu, reads choices, calls park, exit, slot map or summary |
 
-Private helpers `park`, `exit` and `summary` declare `throws Exception`. `start` catches
-and displays action errors.
+Private helpers `park`, `exit`, `slotMap` and `summary` declare `throws Exception`. The
+menu shows the capacity and state returned by the backend.
+
+### `ParkingClient`
+
+| Method | Returns | Throws | Purpose |
+|--------|---------|--------|---------|
+| `capacity()` | `int` | `ApiException` | Returns the configured capacity |
+| `park(Vehicle vehicle)` | `Ticket` | `ApiException` | Parks a vehicle through the backend |
+| `exit(int number, double hours)` | `Ticket` | `ApiException` | Closes and bills a ticket through the backend |
+| `find(int number)` | `Ticket` | `ApiException` | Returns an active ticket, or `null` when the backend returns `404` |
+| `slots()` | `SlotMap` | `ApiException` | Returns capacity, counts and every slot view |
+| `summary()` | `ParkingSummary` | `ApiException` | Returns slot, vehicle and collection totals |
+
+### `RemoteParkingClient`
+
+`RemoteParkingClient` implements `ParkingClient` with `java.net.http.HttpClient` and
+Jackson. It sends JSON to `/api`, maps `TicketResponse` records back to `Ticket` objects
+and wraps transport, HTTP and mapping failures in `ApiException`.
+
+### `ParkingController`
+
+| Endpoint | Returns | Throws | Purpose |
+|----------|---------|--------|---------|
+| `vehicleTypes()` | `List<VehicleTypeResponse>` | None | Lists vehicle types |
+| `slots()` | `SlotMapResponse` | None | Reads the synchronized slot table |
+| `summary()` | `SummaryResponse` | `StorageException` | Reads counts and MySQL collection totals |
+| `park(ParkRequest request)` | `TicketResponse` | `Exception` | Validates the plate, creates the vehicle and parks it |
+| `ticket(int number)` | `TicketResponse` | `InvalidTicketException` | Returns an active ticket or `404` |
+| `exit(int number, ExitRequest request)` | `TicketResponse` | `Exception` | Closes and bills the ticket |
 
 ### `ParkingLot`
 
@@ -249,9 +423,11 @@ The subclasses add no state or public methods. They inherit validation, billing 
 | `getRate()` | `int` | None | Returns the hourly rate |
 | `getSlotCount()` | `int` | None | Returns the slot count |
 | `getCode()` | `String` | None | Returns the database code |
+| `fromCode(String code)` | `VehicleType` | `InvalidVehicleException` | Resolves a database/API code case-insensitively |
 | `createVehicle(String plate, String owner)` | `Vehicle` | `InvalidVehicleException`, `InvalidPlateException`, `InvalidOwnerException` | Creates the matching package-private subclass |
 
-`createVehicle` is the public factory for vehicle objects.
+`createVehicle` is the public factory for vehicle objects. `fromCode` is shared by the
+REST controller, `RemoteParkingClient` and `Storage`.
 
 ### `Slot`
 
@@ -282,9 +458,10 @@ The subclasses add no state or public methods. They inherit validation, billing 
 | `getEntry()` | `Date` | None | Returns a copy of the entry time |
 | `getHours()` | `int` | None | Returns billable hours after closing |
 | `getCharge()` | `int` | None | Returns the charge after closing |
+| `isActive()` | `boolean` | None | Reports whether the ticket is still active |
 
 `Ticket` clones the slot array and entry date. `continueFrom` resumes numbering after
-startup.
+startup. `isActive` is used by the REST response so the web and CLI can show ticket state.
 
 ### `Plate`
 
@@ -322,9 +499,18 @@ not verify real state or RTO codes. Example: `TN37AB1234`.
 |--------|---------|--------|---------|
 | `connect()` | `Connection` | `StorageException` | Loads the JDBC driver and opens a connection from `.env` and environment values |
 
-`Database` reads `PARKEASE_DB_URL`, `PARKEASE_DB_USER` and `PARKEASE_DB_PASSWORD`.
-Environment variables override `.env`. Configuration is parsed into
-`HashMap<String, String>`.
+`Database` reads `PARKEASE_DB_URL`, `PARKEASE_DB_USER` and `PARKEASE_DB_PASSWORD`
+through `Environment`. Environment variables override `.env`. `Main` also reads
+`PARKEASE_API_URL` through the same helper, so the CLI and backend use one parser.
+
+### `Environment`
+
+| Method | Returns | Throws | Purpose |
+|--------|---------|--------|---------|
+| `value(String key, String fallback)` | `String` | `StorageException` | Reads a key from the environment first, then `.env`, then the fallback |
+
+`.env` lines support `KEY=value`, optional single or double quotes, comments and blank
+lines. `PARKEASE_DB_*` and `PARKEASE_API_*` values are resolved at runtime.
 
 ## Java data types
 
@@ -341,19 +527,25 @@ Environment variables override `.env`. Configuration is parsed into
 | `int[]` | Ticket slot numbers |
 | `String[]` | Split slot list and enum values |
 | `List<Ticket>` | Return type for active tickets |
+| `List<SlotView>`, `List<TypeCount>` | CLI slot and summary views |
 | `ArrayList<Ticket>` | Active-ticket load buffer |
 | `LinkedHashMap<Integer, Ticket>` | Active tickets by number |
 | `HashMap<String, String>` | Configuration values |
+| `Map.of(...)` | Small JSON request bodies |
 | `StringBuilder` | String assembly |
 | `Scanner` | Console input |
+| `HttpClient`, `HttpRequest`, `HttpResponse` | CLI REST transport |
+| `URI`, `Duration` | Backend address and HTTP timeouts |
+| `ObjectMapper` | CLI JSON encoding and decoding |
+| `record` | Immutable API DTOs and CLI view records |
 | `Connection`, `Statement`, `PreparedStatement`, `ResultSet` | JDBC |
 | `SimpleDateFormat`, `TimeZone`, `Locale` | Date formatting and case conversion |
 | `Exception` subclasses | Checked errors |
 
 Arrays hold the slot table and ticket slot numbers. `ArrayList` loads active tickets through
 `List`. `LinkedHashMap` tracks active tickets. `HashMap` stores configuration. `Queue` is
-unused because console operations are synchronous. `Properties`, `Hashtable`, `Vector`,
-`HashSet` and `TreeMap` are not used.
+not used because console operations and HTTP requests are synchronous. `Properties`,
+`Hashtable`, `Vector`, `HashSet` and `TreeMap` are not used.
 
 ## MySQL schema
 
@@ -398,7 +590,7 @@ Index: `idx_slots_ticket (ticket_no)`.
 | `String` plate or owner | `VARCHAR` | `PreparedStatement.setString` |
 | `int` number, hours, charge or slot | `INT` | `PreparedStatement.setInt` |
 | `Date` entry or exit | `DATETIME` | Formatted with `yyyy-MM-dd HH:mm:ss` in Asia/Kolkata |
-| `VehicleType` | `VARCHAR` code | `getCode()` writes `BIKE`, `CAR` or `TRUCK`; `Storage.findType` reads it |
+| `VehicleType` | `VARCHAR` code | `getCode()` writes `BIKE`, `CAR` or `TRUCK`; `VehicleType.fromCode` reads it |
 | `boolean` active | `status` text | `ACTIVE` or `CLOSED` |
 | `int[]` ticket slots | Rows in `slots` | Each slot is a row; `GROUP_CONCAT` rebuilds the list |
 
@@ -502,8 +694,11 @@ Custom exceptions are separate classes under `src/parkease/exception` and extend
 | `InvalidHoursException` | `InvalidHoursException(String message)` | Hours are non-positive, NaN or infinite |
 | `InvalidSlotException` | `InvalidSlotException(String message)` | Slot is occupied, free, out of range or owned by another ticket |
 | `StorageException` | `StorageException(String message)`, `StorageException(String message, Exception cause)` | Configuration, connection, setup, query, load, save or close fails |
+| `ApiException` | `ApiException(String message)`, `ApiException(String message, Exception cause)` | CLI transport, HTTP error or JSON mapping failure |
 
-`StorageException` preserves the original JDBC or parsing exception.
+`StorageException` preserves the original JDBC or parsing exception. `ApiException`
+preserves the transport or mapping cause. `ApiExceptionHandler` converts domain
+exceptions into HTTP statuses and JSON error messages.
 
 ### `throws` matrix
 
@@ -533,28 +728,36 @@ Custom exceptions are separate classes under `src/parkease/exception` and extend
 | `Slot.take(Ticket ticket)` | `InvalidSlotException` |
 | `Slot.free(int ticket)` | `InvalidSlotException` |
 | `Plate.check(String rawPlate)` | `InvalidPlateException` |
-| `Menu.start()` | None declared; action errors are caught |
+| `ParkingClient.capacity()` | `ApiException` |
+| `ParkingClient.park(Vehicle vehicle)` | `ApiException` |
+| `ParkingClient.exit(int number, double hours)` | `ApiException` |
+| `ParkingClient.find(int number)` | `ApiException` |
+| `ParkingClient.slots()` | `ApiException` |
+| `ParkingClient.summary()` | `ApiException` |
+| `Menu.start()` | `Exception` |
 | `Main.main(String[] args)` | None declared; startup errors are caught |
 
 ### Exception flow
 
-- `Menu` catches `ParkingFullException` and `Exception`, prints the message and continues.
-- `Main` catches startup errors, prints a message and exits with failure status.
+- `Menu` catches action errors, prints the message and continues. `Main` catches startup
+  errors, prints a message and exits with failure status.
+- `RemoteParkingClient` wraps HTTP and JSON failures in `ApiException`.
+- `ApiExceptionHandler` maps validation errors to `400`, missing tickets to `404`,
+  duplicate/full/conflict errors to `409`, and storage or unexpected failures to `500`.
 - `Storage` wraps JDBC and parsing failures in `StorageException`; `save` and `close`
   roll back before wrapping.
 - `ParkingLot.park` writes the ticket before marking slots. `ParkingLot.exit` writes the
   close before releasing slots. A storage failure leaves memory unchanged.
 
 Custom exceptions are checked because they extend `Exception`. No custom unchecked
-exception is defined. Input parsing and SQL exceptions are caught at the boundary and
+exception is defined. Input parsing, HTTP and SQL exceptions are caught at the boundary and
 converted or wrapped.
 
 ## Example
 
 ```java
 static void example(double hours) throws Exception {
-  Storage storage = new Storage();
-  ParkingLot parking = new ParkingLot(storage);
+  ParkingClient parking = new RemoteParkingClient("http://localhost:8080");
 
   Vehicle vehicle = VehicleType.carType.createVehicle("TN37AB1234", "Asha");
   Ticket ticket = parking.park(vehicle);
@@ -564,13 +767,22 @@ static void example(double hours) throws Exception {
 }
 ```
 
-`hours` is rounded up, and the daily cap limits billable hours.
+`hours` is rounded up, and the daily cap limits billable hours. The backend must be
+running before the client calls. Direct domain code can still create `Storage`,
+`ParkingLot`, `park` and `exit` inside the backend.
 
 ## Related files
 
-- `README.md` - build, configuration, menu, parking rules and database setup.
+- `README.md` - build, configuration, run scripts and API examples.
+- `pom.xml` - Maven and Spring Boot configuration.
 - `sql/schema.sql` - manual MySQL schema.
+- `src/parkease/ParkEaseApplication.java` - Spring Boot entry point.
+- `src/parkease/api` - REST controller, DTO records and exception mapping.
+- `src/parkease/client` - CLI HTTP gateway and view records.
 - `src/parkease/model` - interface, abstract class, subclasses and domain objects.
 - `src/parkease/service/ParkingLot.java` - slot allocation and exit workflow.
 - `src/parkease/storage` - JDBC persistence and configuration.
 - `src/parkease/exception` - checked exception classes.
+- `frontend/src/lib/api.ts` - web API client.
+- `frontend/src/routes` - TanStack Start routes.
+- `frontend/src/components/ui.tsx` - shared panels, slot grid and ticket card.

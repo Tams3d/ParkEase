@@ -38,6 +38,18 @@ public enum VehicleType {
     return code;
   }
 
+  public static VehicleType fromCode(String code) throws InvalidVehicleException {
+    if (code == null) {
+      throw new InvalidVehicleException("Vehicle type is required.");
+    }
+    for (VehicleType type : values()) {
+      if (type.code.equalsIgnoreCase(code.trim())) {
+        return type;
+      }
+    }
+    throw new InvalidVehicleException("Unknown vehicle type: " + code);
+  }
+
   public Vehicle createVehicle(String plate, String owner)
       throws InvalidVehicleException, InvalidPlateException, InvalidOwnerException {
     switch (this) {

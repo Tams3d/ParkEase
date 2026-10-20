@@ -1,5 +1,12 @@
+target/
 out/
 *.class
+
+frontend/node_modules/
+frontend/.output/
+frontend/.nitro/
+frontend/dist/
+frontend/build.log
 
 .idea/
 *.iml
@@ -9,6 +16,14 @@ out/
 .project
 
 .env
+.env.local
+
+# Agent skills are installed via `npx skills add` (see skills-lock.json)
+.agents/skills/
+
+# Taste-skill design captures are local artifacts
+.taste-skill/before/
+.taste-skill/after/
 
 lib/*.jar
 
