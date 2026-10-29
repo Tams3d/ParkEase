@@ -18,12 +18,8 @@ frontend/build.log
 .env
 .env.local
 
-# Agent skills are installed via `npx skills add` (see skills-lock.json)
 .agents/skills/
-
-# Taste-skill design captures are local artifacts
-.taste-skill/before/
-.taste-skill/after/
+.taste-skill/
 
 lib/*.jar
 
