@@ -10,7 +10,7 @@ cd C:\Users\techn\Documents\GitHub\ParkEase
 
 ## Requirements
 
-- Java 25 or newer
+- Java 17 or newer
 - MySQL 8 or newer
 - Bun (only for the frontend)
 
