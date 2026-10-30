@@ -7,26 +7,26 @@ import parkease.exception.StorageException;
 
 class Database {
 
-  private final String defaultUrl =
-      "jdbc:mysql://localhost:3306/parkease"
-          + "?createDatabaseIfNotExist=true"
-          + "&useSSL=false"
-          + "&allowPublicKeyRetrieval=true"
-          + "&serverTimezone=Asia/Kolkata"
-          + "&characterEncoding=UTF-8";
-
   Connection connect() throws StorageException {
-    String jdbcUrl = Environment.value("PARKEASE_DB_URL", defaultUrl);
+    String host = Environment.value("PARKEASE_DB_HOST", "localhost");
+    String port = Environment.value("PARKEASE_DB_PORT", "3306");
+    String name = Environment.value("PARKEASE_DB_NAME", "parkease");
     String user = Environment.value("PARKEASE_DB_USER", "root");
     String password = Environment.value("PARKEASE_DB_PASSWORD", "");
 
+    String url =
+        "jdbc:mysql://" + host + ":" + port + "/" + name
+            + "?useSSL=false&allowPublicKeyRetrieval=true"
+            + "&serverTimezone=Asia/Kolkata&characterEncoding=UTF-8";
+
     try {
-      Class.forName("com.mysql.cj.jdbc.Driver");
-      return DriverManager.getConnection(jdbcUrl, user, password);
+      return DriverManager.getConnection(url, user, password);
     } catch (Exception error) {
       throw new StorageException(
-          "Could not connect to MySQL: " + error.getMessage()
-              + "\nCheck .env, environment variables and MySQL.",
+          "Could not connect to MySQL at " + host + ":" + port + "/" + name
+              + ". Make sure MySQL is running, the database exists and the"
+              + " credentials in .env are correct. To create it run:"
+              + " CREATE DATABASE " + name + ";",
           error);
     }
   }

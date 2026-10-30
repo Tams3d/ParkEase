@@ -2,7 +2,6 @@ package parkease.model;
 
 import java.util.Date;
 import parkease.exception.InvalidTicketException;
-import parkease.exception.InvalidVehicleException;
 
 public class Ticket {
 
@@ -15,30 +14,20 @@ public class Ticket {
   private int charge;
   private boolean active = true;
 
-  public Ticket(int number, Vehicle vehicle, int[] slots, Date entry)
-      throws InvalidVehicleException, InvalidTicketException {
-    if (vehicle == null) {
-      throw new InvalidVehicleException("Vehicle is required.");
-    }
-    if (slots == null || slots.length == 0) {
-      throw new InvalidTicketException("At least one slot is required.");
-    }
-    if (entry == null) {
-      throw new InvalidTicketException("Entry time is required.");
-    }
+  public Ticket(int number, Vehicle vehicle, int[] slots, Date entry) {
     this.number = number;
     this.vehicle = vehicle;
-    this.slots = slots.clone();
-    this.entry = new Date(entry.getTime());
+    this.slots = slots;
+    this.entry = entry;
   }
 
-  public static synchronized int takeNextNumber() {
-    int currentNumber = nextNumber;
+  public static int takeNextNumber() {
+    int current = nextNumber;
     nextNumber = nextNumber + 1;
-    return currentNumber;
+    return current;
   }
 
-  public static synchronized void continueFrom(int lastNumber) {
+  public static void continueFrom(int lastNumber) {
     if (lastNumber >= nextNumber) {
       nextNumber = lastNumber + 1;
     }
@@ -66,7 +55,7 @@ public class Ticket {
   }
 
   public int[] getSlots() {
-    return slots.clone();
+    return slots;
   }
 
   public String slotText() {
@@ -81,7 +70,7 @@ public class Ticket {
   }
 
   public Date getEntry() {
-    return new Date(entry.getTime());
+    return entry;
   }
 
   public int getHours() {

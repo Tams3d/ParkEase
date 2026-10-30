@@ -8,7 +8,7 @@ import { Loading } from '~/components/ui'
 import { SlotGrid } from '~/components/ui'
 import { Stat } from '~/components/ui'
 import { TypeLegend } from '~/components/ui'
-import { api, type SlotMap, type Summary } from '~/lib/api'
+import { api, subscribe, type SlotMap, type Summary } from '~/lib/api'
 
 export const Route = createFileRoute('/')({
   component: Dashboard,
@@ -22,8 +22,10 @@ function Dashboard() {
 
   const [refreshing, setRefreshing] = useState(false)
 
-  async function load() {
-    setRefreshing(true)
+  async function load(showSpinner = true) {
+    if (showSpinner) {
+      setRefreshing(true)
+    }
     setError('')
     try {
       const minWait = new Promise((resolve) => setTimeout(resolve, 400))
@@ -44,6 +46,9 @@ function Dashboard() {
 
   useEffect(() => {
     void load()
+    return subscribe(() => {
+      void load(false)
+    })
   }, [])
 
   return (
@@ -55,8 +60,8 @@ function Dashboard() {
             Live lot status
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            The web app and CLI both read and write through the same Spring Boot
-            backend. Changes appear on both clients immediately.
+            Everything is stored in this browser. Changes appear here
+            immediately.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

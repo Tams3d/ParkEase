@@ -80,9 +80,14 @@ export function SlotGrid({ slots }: { slots: Slot[] }) {
               <span className="text-xs font-medium text-muted-foreground">Slot {slot.number}</span>
               <span className={`h-2 w-2 rounded-full ${slot.free ? 'bg-positive' : 'bg-warning'}`} />
             </div>
-            <p className={`mt-3 min-h-10 break-words text-sm font-medium ${slot.free ? 'text-positive-foreground' : 'text-warning-foreground'}`}>
+            <p className={`mt-3 break-words text-sm font-medium ${slot.free ? 'text-positive-foreground' : 'text-warning-foreground'}`}>
               {slot.display}
             </p>
+            {slot.ticketNo !== null && (
+              <p className="mt-1 text-xs font-medium text-warning-foreground">
+                T-{slot.ticketNo}
+              </p>
+            )}
           </CardContent>
         </Card>
       ))}

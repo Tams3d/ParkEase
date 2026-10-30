@@ -8,7 +8,7 @@ import { Separator } from '~/components/ui/separator'
 import { ErrorNotice } from '~/components/ui'
 import { Loading } from '~/components/ui'
 import { Stat } from '~/components/ui'
-import { api, type Summary } from '~/lib/api'
+import { api, subscribe, type Summary } from '~/lib/api'
 
 export const Route = createFileRoute('/summary')({
   component: SummaryPage,
@@ -20,15 +20,14 @@ function SummaryPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
-  async function load() {
-    setRefreshing(true)
+  async function load(showSpinner = true) {
+    if (showSpinner) {
+      setRefreshing(true)
+    }
     setError('')
     try {
       const minWait = new Promise((resolve) => setTimeout(resolve, 400))
-      const [nextSummary] = await Promise.all([
-        api.summary(),
-        minWait,
-      ])
+      const [nextSummary] = await Promise.all([api.summary(), minWait])
       setSummary(nextSummary)
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Could not load the summary.')
@@ -40,6 +39,9 @@ function SummaryPage() {
 
   useEffect(() => {
     void load()
+    return subscribe(() => {
+      void load(false)
+    })
   }, [])
 
   return (
@@ -51,8 +53,8 @@ function SummaryPage() {
             Parking summary
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Active slot state, vehicle counts and collection totals from the
-            shared MySQL-backed backend.
+            Active slot state, vehicle counts and collection totals for this
+            browser's parking data.
           </p>
         </div>
         <button
@@ -81,7 +83,7 @@ function SummaryPage() {
             <Stat
               label="Vehicles parked"
               value={summary.parked}
-              detail="Active tickets in memory and MySQL"
+              detail="Currently parked vehicles"
             />
             <Stat
               label="Tickets issued"

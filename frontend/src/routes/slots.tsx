@@ -7,7 +7,7 @@ import { Loading } from '~/components/ui'
 import { SlotGrid } from '~/components/ui'
 import { Stat } from '~/components/ui'
 import { TypeLegend } from '~/components/ui'
-import { api, type SlotMap, type VehicleType } from '~/lib/api'
+import { api, subscribe, type SlotMap, type VehicleType } from '~/lib/api'
 
 export const Route = createFileRoute('/slots')({
   component: SlotsPage,
@@ -20,8 +20,10 @@ function SlotsPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
-  async function load() {
-    setRefreshing(true)
+  async function load(showSpinner = true) {
+    if (showSpinner) {
+      setRefreshing(true)
+    }
     setError('')
     try {
       const minWait = new Promise((resolve) => setTimeout(resolve, 400))
@@ -42,6 +44,9 @@ function SlotsPage() {
 
   useEffect(() => {
     void load()
+    return subscribe(() => {
+      void load(false)
+    })
   }, [])
 
   return (
@@ -53,8 +58,8 @@ function SlotsPage() {
             Slot map
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Every slot is read from the backend. Free slots show FREE; occupied
-            slots show the plate and vehicle code.
+            Free slots show FREE; occupied slots show the plate, vehicle code
+            and ticket number.
           </p>
         </div>
         <button

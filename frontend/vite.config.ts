@@ -12,6 +12,13 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  build: {
+    rolldownOptions: {
+      checks: {
+        moduleLevelDirective: false,
+      },
+    },
+  },
   plugins: [
     tailwindcss(),
     tanstackStart({

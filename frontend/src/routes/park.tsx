@@ -63,7 +63,7 @@ function ParkPage() {
           Park a vehicle
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Choose a vehicle type, enter the number plate and owner. The backend
+          Choose a vehicle type, enter the number plate and owner. ParkEase
           allocates slots and issues the next ticket.
         </p>
       </div>

@@ -6,7 +6,6 @@ import {
 } from '@tanstack/react-router'
 import { useState, type ReactNode } from 'react'
 import appCss from '~/styles/app.css?url'
-import { apiBaseUrl } from '~/lib/api'
 import { Sheet, SheetContent, SheetTrigger } from '~/components/ui/sheet'
 import { Separator } from '~/components/ui/separator'
 import { SquareParking } from 'lucide-react'
@@ -83,7 +82,7 @@ function RootDocument({ children }: { children: ReactNode }) {
               ))}
             </nav>
             <div className="border-t border-sidebar-border p-4 text-xs text-muted-foreground flex items-center justify-between">
-              <span>Spring Boot backend at <span className="font-mono">{apiBaseUrl}</span></span>
+              <span>Saved in this browser</span>
             </div>
           </aside>
 
@@ -128,7 +127,7 @@ function RootDocument({ children }: { children: ReactNode }) {
                       <div>
                         <Separator className="my-4" />
                         <p className="text-xs text-muted-foreground">
-                          Spring Boot backend at <span className="font-mono">{apiBaseUrl}</span>
+                          Saved in this browser
                         </p>
                       </div>
                     </SheetContent>

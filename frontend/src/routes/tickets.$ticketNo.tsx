@@ -5,7 +5,7 @@ import { Card, CardContent } from '~/components/ui/card'
 import { ErrorNotice } from '~/components/ui'
 import { Loading } from '~/components/ui'
 import { TicketCard } from '~/components/ui'
-import { api, type Ticket } from '~/lib/api'
+import { api, subscribe, type Ticket } from '~/lib/api'
 
 export const Route = createFileRoute('/tickets/$ticketNo')({
   component: TicketPage,
@@ -18,8 +18,10 @@ function TicketPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
-  async function loadTicket() {
-    setRefreshing(true)
+  async function loadTicket(showSpinner = true) {
+    if (showSpinner) {
+      setRefreshing(true)
+    }
     setError('')
     try {
       const minWait = new Promise((resolve) => setTimeout(resolve, 400))
@@ -39,6 +41,9 @@ function TicketPage() {
 
   useEffect(() => {
     void loadTicket()
+    return subscribe(() => {
+      void loadTicket(false)
+    })
   }, [ticketNo])
 
   return (
@@ -50,8 +55,8 @@ function TicketPage() {
             Ticket T-{ticketNo}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Ticket details are loaded from the backend. Closed tickets are not
-            returned by the active-ticket endpoint.
+            Ticket details are stored in this browser. Closed tickets stay here
+            for your records.
           </p>
         </div>
         <button

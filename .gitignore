@@ -20,6 +20,7 @@ frontend/build.log
 
 .agents/skills/
 .taste-skill/
+CONTEXT.md
 
 lib/*.jar
 

@@ -302,8 +302,6 @@ public class Menu {
       name = name.trim();
       if (name.isEmpty()) {
         System.out.println("    Please enter an owner name.");
-      } else if (name.length() > 60) {
-        System.out.println("    Owner name must be 60 characters or fewer. Please try again.");
       } else {
         return name;
       }
@@ -332,7 +330,7 @@ public class Menu {
       }
       try {
         double hours = Double.parseDouble(value.trim());
-        if (hours <= 0 || Double.isNaN(hours) || Double.isInfinite(hours)) {
+        if (hours <= 0) {
           System.out.println("    Please enter hours greater than 0.");
         } else {
           return hours;

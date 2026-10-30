@@ -1,7 +1,5 @@
 package parkease.model;
 
-import parkease.exception.InvalidOwnerException;
-import parkease.exception.InvalidPlateException;
 import parkease.exception.InvalidVehicleException;
 
 public enum VehicleType {
@@ -50,17 +48,14 @@ public enum VehicleType {
     throw new InvalidVehicleException("Unknown vehicle type: " + code);
   }
 
-  public Vehicle createVehicle(String plate, String owner)
-      throws InvalidVehicleException, InvalidPlateException, InvalidOwnerException {
+  public Vehicle createVehicle(String plate, String owner) {
     switch (this) {
       case bikeType:
         return new BikeVehicle(plate, owner);
       case carType:
         return new CarVehicle(plate, owner);
-      case truckType:
-        return new TruckVehicle(plate, owner);
       default:
-        throw new InvalidVehicleException("Unknown vehicle type.");
+        return new TruckVehicle(plate, owner);
     }
   }
 }

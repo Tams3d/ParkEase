@@ -1,9 +1,6 @@
 package parkease.model;
 
 import parkease.exception.InvalidHoursException;
-import parkease.exception.InvalidOwnerException;
-import parkease.exception.InvalidPlateException;
-import parkease.exception.InvalidVehicleException;
 
 public abstract class Vehicle implements Chargeable {
 
@@ -11,17 +8,7 @@ public abstract class Vehicle implements Chargeable {
   private final String owner;
   private final VehicleType type;
 
-  protected Vehicle(VehicleType type, String plate, String owner)
-      throws InvalidVehicleException, InvalidPlateException, InvalidOwnerException {
-    if (type == null) {
-      throw new InvalidVehicleException("Vehicle type is required.");
-    }
-    if (plate == null || plate.trim().isEmpty()) {
-      throw new InvalidPlateException("Number plate is required.");
-    }
-    if (owner == null || owner.trim().isEmpty()) {
-      throw new InvalidOwnerException("Owner name is required.");
-    }
+  protected Vehicle(VehicleType type, String plate, String owner) {
     this.type = type;
     this.plate = plate.trim();
     this.owner = owner.trim();

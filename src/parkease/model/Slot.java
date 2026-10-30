@@ -1,7 +1,5 @@
 package parkease.model;
 
-import parkease.exception.InvalidSlotException;
-
 public class Slot {
 
   private final int number;
@@ -28,20 +26,13 @@ public class Slot {
     return plate + " " + type.getCode().charAt(0);
   }
 
-  public void take(Ticket ticket) throws InvalidSlotException {
-    if (!isFree()) {
-      throw new InvalidSlotException("Slot " + number + " is already occupied.");
-    }
+  public void take(Ticket ticket) {
     plate = ticket.getVehicle().getPlate();
     type = ticket.getVehicle().getType();
     ticketNo = ticket.getNo();
   }
 
-  public void free(int ticket) throws InvalidSlotException {
-    if (isFree() || ticketNo != ticket) {
-      throw new InvalidSlotException(
-          "Slot " + number + " does not belong to this ticket.");
-    }
+  public void free() {
     plate = null;
     type = null;
     ticketNo = 0;

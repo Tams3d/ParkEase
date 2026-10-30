@@ -57,7 +57,7 @@ function ExitPage() {
           Exit a vehicle
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Enter the ticket number and parked hours. The backend rounds partial
+          Enter the ticket number and parked hours. ParkEase rounds partial
           hours up, applies the daily cap and frees the ticket slots.
         </p>
       </div>
@@ -118,7 +118,7 @@ function ExitPage() {
                   <h2 className="text-lg font-semibold mb-2">Receipt ready</h2>
                   <p className="text-sm leading-6 text-muted-foreground">
                     Slots {ticket.slots.join(' & ')} are free again. The charge is
-                    recorded in MySQL and both clients now see the updated summary.
+                    recorded and the summary is updated.
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link to="/summary" className="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted">

@@ -1,16 +1,14 @@
 package parkease.service;
 
-import java.util.Arrays;
 import java.util.Date;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
+import java.util.Map;
 import parkease.exception.DuplicateVehicleException;
 import parkease.exception.InvalidHoursException;
 import parkease.exception.InvalidSlotException;
 import parkease.exception.InvalidTicketException;
-import parkease.exception.InvalidVehicleException;
 import parkease.exception.ParkingFullException;
 import parkease.exception.StorageException;
-import parkease.model.Chargeable;
 import parkease.model.Slot;
 import parkease.model.Ticket;
 import parkease.model.Vehicle;
@@ -19,18 +17,14 @@ import parkease.storage.Storage;
 
 public class ParkingLot {
 
-  private static final int capacity = 20;
-  private final Slot[] slots;
-  private final LinkedHashMap<Integer, Ticket> tickets = new LinkedHashMap<>();
+  private final int capacity = 20;
+  private final Slot[] slots = new Slot[capacity];
+  private final Map<Integer, Ticket> tickets = new HashMap<>();
   private final Storage storage;
 
   public ParkingLot(Storage storage) throws StorageException {
-    if (storage == null) {
-      throw new StorageException("Storage is required.");
-    }
     this.storage = storage;
 
-    slots = new Slot[capacity];
     for (int index = 0; index < capacity; index++) {
       slots[index] = new Slot(index + 1);
     }
@@ -39,10 +33,8 @@ public class ParkingLot {
     Ticket.continueFrom(storage.lastNo());
 
     for (Ticket ticket : storage.active()) {
-      try {
-        load(ticket);
-      } catch (InvalidSlotException error) {
-        throw new StorageException("Could not load active tickets.", error);
+      for (int slotNumber : ticket.getSlots()) {
+        slots[slotNumber - 1].take(ticket);
       }
       tickets.put(ticket.getNo(), ticket);
     }
@@ -52,22 +44,14 @@ public class ParkingLot {
     return capacity;
   }
 
-  public synchronized Ticket park(Vehicle vehicle)
-      throws ParkingFullException, DuplicateVehicleException, InvalidVehicleException,
-          InvalidTicketException, InvalidSlotException, StorageException {
-    if (vehicle == null) {
-      throw new InvalidVehicleException("Vehicle is required.");
-    }
-
+  public Ticket park(Vehicle vehicle)
+      throws ParkingFullException, DuplicateVehicleException, InvalidTicketException,
+          InvalidSlotException, StorageException {
     Ticket existing = findPlate(vehicle.getPlate());
     if (existing != null) {
       throw new DuplicateVehicleException(
           "Vehicle " + vehicle.getPlate() + " is already parked ("
               + existing.number() + ").");
-    }
-    if (storage.parked(vehicle.getPlate())) {
-      throw new DuplicateVehicleException(
-          "Vehicle " + vehicle.getPlate() + " is already parked.");
     }
 
     VehicleType type = vehicle.getType();
@@ -98,26 +82,25 @@ public class ParkingLot {
     return ticket;
   }
 
-  public synchronized Ticket exit(int number, double hours)
+  public Ticket exit(int number, double hours)
       throws InvalidTicketException, InvalidHoursException, InvalidSlotException, StorageException {
     Ticket ticket = tickets.get(number);
     if (ticket == null) {
       throw new InvalidTicketException("No active ticket T-" + number + ".");
     }
-    if (hours <= 0 || Double.isNaN(hours) || Double.isInfinite(hours)) {
+    if (hours <= 0) {
       throw new InvalidHoursException("Hours parked must be greater than 0.");
     }
 
     int bill = (int) Math.ceil(hours);
-    Chargeable chargeable = ticket.getVehicle();
-    int amount = chargeable.calculateCharge(bill);
+    int amount = ticket.getVehicle().calculateCharge(bill);
     Date exitTime = new Date();
 
     storage.close(ticket, bill, amount, exitTime);
 
     ticket.close(bill, amount);
     for (int slotNumber : ticket.getSlots()) {
-      slots[slotNumber - 1].free(number);
+      slots[slotNumber - 1].free();
     }
     tickets.remove(number);
     return ticket;
@@ -139,53 +122,56 @@ public class ParkingLot {
     return -1;
   }
 
-  private void load(Ticket ticket) throws InvalidSlotException {
-    for (int slotNumber : ticket.getSlots()) {
-      if (slotNumber < 1 || slotNumber > capacity) {
-        throw new InvalidSlotException("Ticket uses an invalid slot: " + slotNumber);
-      }
-      slots[slotNumber - 1].take(ticket);
-    }
-  }
-
   private Ticket findPlate(String plate) {
-    return tickets.values().stream()
-        .filter(ticket -> ticket.getVehicle().getPlate().equalsIgnoreCase(plate))
-        .findFirst()
-        .orElse(null);
+    for (Ticket ticket : tickets.values()) {
+      if (ticket.getVehicle().getPlate().equalsIgnoreCase(plate)) {
+        return ticket;
+      }
+    }
+    return null;
   }
 
-  public synchronized Ticket find(int number) {
+  public Ticket find(int number) {
     return tickets.get(number);
   }
 
-  public synchronized Slot[] getSlots() {
-    return Arrays.copyOf(slots, slots.length);
+  public Slot[] getSlots() {
+    return slots;
   }
 
-  public synchronized int freeSlots() {
-    return (int) Arrays.stream(slots).filter(Slot::isFree).count();
+  public int freeSlots() {
+    int count = 0;
+    for (Slot slot : slots) {
+      if (slot.isFree()) {
+        count = count + 1;
+      }
+    }
+    return count;
   }
 
-  public synchronized int parked() {
+  public int parked() {
     return tickets.size();
   }
 
-  public synchronized int count(VehicleType type) {
-    return (int) tickets.values().stream()
-        .filter(ticket -> ticket.getVehicle().getType() == type)
-        .count();
+  public int count(VehicleType type) {
+    int count = 0;
+    for (Ticket ticket : tickets.values()) {
+      if (ticket.getVehicle().getType() == type) {
+        count = count + 1;
+      }
+    }
+    return count;
   }
 
-  public synchronized int total() throws StorageException {
+  public int total() throws StorageException {
     return storage.total();
   }
 
-  public synchronized int todayTotal() throws StorageException {
+  public int todayTotal() throws StorageException {
     return storage.todayTotal();
   }
 
-  public synchronized int ticketCount() throws StorageException {
+  public int ticketCount() throws StorageException {
     return storage.ticketCount();
   }
 }

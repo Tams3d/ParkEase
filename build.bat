@@ -18,7 +18,7 @@ set "JAVA_HOME=%JAVA_DIR%"
 
 "%JAVA%" -version >nul 2>nul
 if errorlevel 1 (
-  echo Java was not found. Install JDK 25 LTS or newer and set JAVA_HOME if needed.
+  echo Java was not found. Install JDK 11 or newer and set JAVA_HOME if needed.
   set "RESULT=1"
   goto :finish
 )
