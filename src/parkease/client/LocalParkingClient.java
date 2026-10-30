@@ -4,9 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import parkease.exception.DuplicateVehicleException;
 import parkease.exception.InvalidHoursException;
-import parkease.exception.InvalidSlotException;
 import parkease.exception.InvalidTicketException;
-import parkease.exception.InvalidVehicleException;
 import parkease.exception.ParkingFullException;
 import parkease.exception.StorageException;
 import parkease.model.Slot;
@@ -30,13 +28,13 @@ public class LocalParkingClient implements ParkingClient {
 
   @Override
   public Ticket park(Vehicle vehicle) throws ParkingFullException, DuplicateVehicleException,
-      InvalidVehicleException, InvalidTicketException, InvalidSlotException, StorageException {
+      StorageException {
     return lot.park(vehicle);
   }
 
   @Override
   public Ticket exit(int number, double hours)
-      throws InvalidTicketException, InvalidHoursException, InvalidSlotException, StorageException {
+      throws InvalidTicketException, InvalidHoursException, StorageException {
     return lot.exit(number, hours);
   }
 

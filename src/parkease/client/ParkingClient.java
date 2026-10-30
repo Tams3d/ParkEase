@@ -2,9 +2,7 @@ package parkease.client;
 
 import parkease.exception.DuplicateVehicleException;
 import parkease.exception.InvalidHoursException;
-import parkease.exception.InvalidSlotException;
 import parkease.exception.InvalidTicketException;
-import parkease.exception.InvalidVehicleException;
 import parkease.exception.ParkingFullException;
 import parkease.exception.StorageException;
 import parkease.model.Ticket;
@@ -15,10 +13,10 @@ public interface ParkingClient {
   int capacity();
 
   Ticket park(Vehicle vehicle) throws ParkingFullException, DuplicateVehicleException,
-      InvalidVehicleException, InvalidTicketException, InvalidSlotException, StorageException;
+      StorageException;
 
   Ticket exit(int number, double hours)
-      throws InvalidTicketException, InvalidHoursException, InvalidSlotException, StorageException;
+      throws InvalidTicketException, InvalidHoursException, StorageException;
 
   Ticket find(int number);
 

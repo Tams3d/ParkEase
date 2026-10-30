@@ -1,7 +1,6 @@
 package parkease.console;
 
 import java.text.SimpleDateFormat;
-import java.util.List;
 import java.util.Locale;
 import java.util.Scanner;
 import java.util.TimeZone;
@@ -23,12 +22,10 @@ public class Menu {
       new SimpleDateFormat("dd-MMM-yyyy hh:mm a", Locale.ENGLISH);
   private final Plate validator = new Plate();
   private final ParkingClient parking;
-  private final Scanner reader;
-  private final boolean interactive = System.console() != null;
+  private final Scanner sc = new Scanner(System.in);
 
-  public Menu(ParkingClient parking, Scanner reader) {
+  public Menu(ParkingClient parking) {
     this.parking = parking;
-    this.reader = reader;
     formatter.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
   }
 
@@ -100,7 +97,6 @@ public class Menu {
     System.out.println("  Park a vehicle");
     System.out.println();
     System.out.println("    Vehicle choices:");
-
     VehicleType[] types = VehicleType.values();
     for (int index = 0; index < types.length; index++) {
       VehicleType option = types[index];
@@ -150,14 +146,25 @@ public class Menu {
     System.out.println("  Ticket " + ticket.number() + " issued.");
     System.out.println("  Keep this ticket number for exit.");
     System.out.println();
-    System.out.println(
-        "    Vehicle  " + vehicle.getPlate() + " (" + type.getDisplayName() + ")");
+    System.out.println("    Vehicle  " + vehicle.getPlate() + " (" + type.getDisplayName() + ")");
     System.out.println("    Owner    " + vehicle.getOwner());
     System.out.println("    Slots    " + ticket.slotText());
     System.out.println("    Entry    " + formatter.format(ticket.getEntry()) + " IST");
-    System.out.println(
-        "    Rate     Rs. " + type.getRate()
-            + "/hour (daily cap: " + Chargeable.dailyCapHours + " hours)");
+    System.out.println("    Rate     Rs. " + type.getRate() + "/hour (daily cap: " + Chargeable.dailyCapHours + " hours)");
+  }
+
+  private String owner() {
+    System.out.print("    Owner name: ");
+    System.out.flush();
+    String name = sc.hasNextLine() ? sc.nextLine() : null;
+    if (name != null) {
+      name = name.trim();
+      if (name.isEmpty()) {
+        System.out.println("    Please enter an owner name.");
+        return null;
+      }
+    }
+    return name;
   }
 
   private void exit() throws Exception {
@@ -178,180 +185,89 @@ public class Menu {
       }
       ticket = parking.find(number);
       if (ticket == null) {
-        System.out.println("    No active ticket T-" + number + ". Please check the number.");
+        System.out.println("    No active ticket T-" + number + ". Try again.");
+        continue;
       }
     }
-    int number = ticket.getNo();
-    Vehicle vehicle = ticket.getVehicle();
 
-    System.out.println();
-    System.out.println(
-        "    Vehicle  " + vehicle.getPlate() + " (" + vehicle.getType().getDisplayName() + ")");
-    System.out.println("    Slots    " + ticket.slotText());
-    System.out.println("    Entry    " + formatter.format(ticket.getEntry()) + " IST");
-    System.out.println();
-
-    System.out.println("    Enter hours parked. Partial hours are rounded up.");
-    Double hours = readHours("    Hours parked (example 2.5): ");
-    if (hours == null) {
+    Double hours = readDouble("    Hours parked: ");
+    if (hours == null || hours <= 0) {
+      System.out.println("    Hours parked must be greater than 0.");
       return;
     }
 
-    Ticket closed = parking.exit(number, hours);
-
-    int bill = closed.getHours();
-    int paid = Math.min(bill, Chargeable.dailyCapHours);
-    int rate = closed.getVehicle().getType().getRate();
-
     System.out.println();
-    System.out.println("  Charge summary");
-    System.out.println();
-    if (bill != hours) {
-      System.out.println("    Partial hours rounded up: " + hoursText(hours)
-          + " -> " + bill + " hour(s).");
-    }
-    if (bill > paid) {
-      System.out.println("    Daily cap applied: " + bill + " hour(s) billed as " + paid + ".");
-    }
-    System.out.println("    Rate     Rs. " + rate + "/hour");
-    System.out.println("    Charge   Rs. " + closed.getCharge());
-
-    int[] slots = closed.getSlots();
-    String label = slots.length == 1 ? "Slot " : "Slots ";
-    String verb = slots.length == 1 ? " is free." : " are free.";
-    System.out.println();
-    System.out.println("    " + label + closed.slotText() + verb);
+    System.out.println("    Closing ticket... (this may take a moment)");
+    Ticket closedTicket = parking.exit(ticket.getNo(), hours);
+    System.out.println("  Ticket " + closedTicket.number() + " exited.");
+    System.out.println("  Charge: Rs. " + closedTicket.getCharge());
+    String label = closedTicket.getSlots().length == 1 ? "Slot " : "Slots ";
+    String verb = closedTicket.getSlots().length == 1 ? " is free again." : " are free again.";
+    System.out.println("  " + label + closedTicket.slotText() + verb);
   }
 
   private void slotMap() throws Exception {
+    SlotMap map = parking.slots();
     System.out.println("  Slot map");
-    System.out.println();
     System.out.println("    Occupied slots show the plate and vehicle code.");
     System.out.println("    Free slots show FREE.");
     System.out.println();
-
-    SlotMap map = parking.slots();
-    List<SlotView> slots = map.slots();
-    String border = "  +--------------+--------------+--------------+--------------+--------------+";
-    int columns = 5;
-    for (int start = 0; start < slots.size(); start += columns) {
-      System.out.println(border);
-      System.out.print("  ");
-      for (int offset = 0; offset < columns; offset++) {
-        int index = start + offset;
-        String label = index < slots.size() ? "Slot " + slots.get(index).number() : "";
-        System.out.print("| " + padCell(label));
-      }
-      System.out.println("|");
-
-      System.out.print("  ");
-      for (int offset = 0; offset < columns; offset++) {
-        int index = start + offset;
-        String code = index < slots.size() ? slots.get(index).display() : "";
-        System.out.print("| " + padCell(code));
-      }
-      System.out.println("|");
+    for (SlotView slot : map.slots()) {
+      System.out.printf(Locale.ENGLISH, "    %2d: %-16s%n", slot.number(), slot.display());
     }
-    System.out.println(border);
     System.out.println();
-
-    System.out.println("    " + map.occupied() + " occupied, " + map.free() + " free");
-
-    StringBuilder legend = new StringBuilder();
-    for (VehicleType type : VehicleType.values()) {
-      if (legend.length() > 0) {
-        legend.append(" | ");
-      }
-      legend.append(type.getCode().charAt(0)).append(" ").append(type.getDisplayName());
-    }
-    legend.append(" | FREE available");
-    System.out.println("    " + legend);
-  }
-
-  private String padCell(String text) {
-    return String.format("%-13s", text);
+    System.out.println("    " + map.free() + " free, " + map.occupied() + " occupied.");
   }
 
   private void summary() throws Exception {
     ParkingSummary summary = parking.summary();
     System.out.println("  Parking summary");
-    System.out.println();
     System.out.println("    Slots       " + summary.capacity() + " total, " + summary.free()
         + " free, " + summary.occupied() + " occupied");
     System.out.println("    Vehicles    " + summary.parked() + " parked");
-
-    StringBuilder byType = new StringBuilder();
     for (TypeCount type : summary.byType()) {
-      if (byType.length() > 0) {
-        byType.append(", ");
-      }
-      byType.append(type.name()).append(" ").append(type.count());
+      System.out.println("      " + type.name() + "       " + type.count());
     }
-    System.out.println("    By type     " + byType);
     System.out.println("    Tickets     " + summary.ticketCount() + " issued");
     System.out.println("    Collection  Rs. " + summary.total() + " (all time)");
     System.out.println("    Today       Rs. " + summary.today());
   }
 
-  private String owner() {
-    while (true) {
-      String name = read("    Enter owner name: ");
-      if (name == null) {
-        return null;
-      }
-      name = name.trim();
-      if (name.isEmpty()) {
-        System.out.println("    Please enter an owner name.");
-      } else {
-        return name;
-      }
-    }
-  }
-
   private Integer readInt(String text) {
-    while (true) {
-      String value = read(text);
-      if (value == null) {
-        return null;
-      }
-      try {
-        return Integer.parseInt(value.trim());
-      } catch (Exception error) {
-        System.out.println("    Please enter a whole number.");
-      }
+    System.out.print(text);
+    System.out.flush();
+    if (!sc.hasNextLine()) {
+      return null;
     }
-  }
-
-  private Double readHours(String text) {
-    while (true) {
-      String value = read(text);
-      if (value == null) {
-        return null;
-      }
-      try {
-        double hours = Double.parseDouble(value.trim());
-        if (hours <= 0) {
-          System.out.println("    Please enter hours greater than 0.");
-        } else {
-          return hours;
-        }
-      } catch (Exception error) {
-        System.out.println("    Please enter hours as a number, for example 2.5.");
-      }
+    String line = sc.nextLine();
+    try {
+      return Integer.parseInt(line.trim());
+    } catch (NumberFormatException error) {
+      return null;
     }
   }
 
   private String read(String text) {
     System.out.print(text);
     System.out.flush();
-    if (!reader.hasNextLine()) {
+    if (!sc.hasNextLine()) {
       return null;
     }
-    String line = reader.nextLine();
-    if (!interactive) {
-      System.out.println();
+    return sc.nextLine();
+  }
+
+  private Double readDouble(String text) {
+    System.out.print(text);
+    System.out.flush();
+    if (!sc.hasNextLine()) {
+      return null;
     }
-    return line;
+    String line = sc.nextLine();
+    try {
+      return Double.parseDouble(line.trim());
+    } catch (NumberFormatException error) {
+      return null;
+    }
   }
 
   private Integer ticketNo(String input) {
@@ -367,15 +283,8 @@ public class Menu {
     try {
       int number = Integer.parseInt(text);
       return number > 0 ? number : null;
-    } catch (Exception error) {
+    } catch (NumberFormatException error) {
       return null;
     }
-  }
-
-  private String hoursText(double hours) {
-    if (hours == Math.rint(hours)) {
-      return String.valueOf((long) hours);
-    }
-    return String.valueOf(hours);
   }
 }

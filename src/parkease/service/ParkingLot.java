@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.Map;
 import parkease.exception.DuplicateVehicleException;
 import parkease.exception.InvalidHoursException;
-import parkease.exception.InvalidSlotException;
 import parkease.exception.InvalidTicketException;
 import parkease.exception.ParkingFullException;
 import parkease.exception.StorageException;
@@ -45,8 +44,7 @@ public class ParkingLot {
   }
 
   public Ticket park(Vehicle vehicle)
-      throws ParkingFullException, DuplicateVehicleException, InvalidTicketException,
-          InvalidSlotException, StorageException {
+      throws ParkingFullException, DuplicateVehicleException, StorageException {
     Ticket existing = findPlate(vehicle.getPlate());
     if (existing != null) {
       throw new DuplicateVehicleException(
@@ -83,7 +81,7 @@ public class ParkingLot {
   }
 
   public Ticket exit(int number, double hours)
-      throws InvalidTicketException, InvalidHoursException, InvalidSlotException, StorageException {
+      throws InvalidTicketException, InvalidHoursException, StorageException {
     Ticket ticket = tickets.get(number);
     if (ticket == null) {
       throw new InvalidTicketException("No active ticket T-" + number + ".");
