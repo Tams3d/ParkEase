@@ -209,11 +209,13 @@ public class Menu {
   private void slotMap() throws Exception {
     SlotMap map = parking.slots();
     System.out.println("  Slot map");
-    System.out.println("    Occupied slots show the plate and vehicle code.");
+    System.out.println("    Occupied slots show the ticket, plate and vehicle code.");
     System.out.println("    Free slots show FREE.");
     System.out.println();
+    System.out.println("    Slot  Details");
+    System.out.println("    ----  ----------------------------");
     for (SlotView slot : map.slots()) {
-      System.out.printf(Locale.ENGLISH, "    %2d: %-16s%n", slot.number(), slot.display());
+      System.out.printf(Locale.ENGLISH, "    %4d  %-28s%n", slot.number(), slot.display());
     }
     System.out.println();
     System.out.println("    " + map.free() + " free, " + map.occupied() + " occupied.");
@@ -226,7 +228,19 @@ public class Menu {
         + " free, " + summary.occupied() + " occupied");
     System.out.println("    Vehicles    " + summary.parked() + " parked");
     for (TypeCount type : summary.byType()) {
-      System.out.println("      " + type.name() + "       " + type.count());
+      System.out.printf(Locale.ENGLISH, "      %-10s %d%n", type.name(), type.count());
+    }
+    System.out.println("    Active tickets");
+    if (summary.activeTickets().isEmpty()) {
+      System.out.println("      None");
+    } else {
+      System.out.println("      Ticket  Slots       Plate        Type");
+      System.out.println("      ------  ----------  -----------  ------");
+      for (Ticket ticket : summary.activeTickets()) {
+        System.out.printf(Locale.ENGLISH, "      %-7s %-11s %-12s %s%n",
+            ticket.number(), ticket.slotText(), ticket.getVehicle().getPlate(),
+            ticket.getVehicle().getType().getDisplayName());
+      }
     }
     System.out.println("    Tickets     " + summary.ticketCount() + " issued");
     System.out.println("    Collection  Rs. " + summary.total() + " (all time)");

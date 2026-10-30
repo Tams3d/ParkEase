@@ -1,7 +1,10 @@
 package parkease.service;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import parkease.exception.DuplicateVehicleException;
 import parkease.exception.InvalidHoursException;
@@ -149,6 +152,12 @@ public class ParkingLot {
 
   public int parked() {
     return tickets.size();
+  }
+
+  public List<Ticket> activeTickets() {
+    List<Ticket> active = new ArrayList<>(tickets.values());
+    Collections.sort(active, (left, right) -> Integer.compare(left.getNo(), right.getNo()));
+    return active;
   }
 
   public int count(VehicleType type) {

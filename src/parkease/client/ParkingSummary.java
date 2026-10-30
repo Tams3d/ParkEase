@@ -1,6 +1,7 @@
 package parkease.client;
 
 import java.util.List;
+import parkease.model.Ticket;
 
 public class ParkingSummary {
 
@@ -12,9 +13,11 @@ public class ParkingSummary {
   private final int ticketCount;
   private final int total;
   private final int today;
+  private final List<Ticket> activeTickets;
 
   public ParkingSummary(int capacity, int free, int occupied, int parked,
-      List<TypeCount> byType, int ticketCount, int total, int today) {
+      List<TypeCount> byType, int ticketCount, int total, int today,
+      List<Ticket> activeTickets) {
     this.capacity = capacity;
     this.free = free;
     this.occupied = occupied;
@@ -23,6 +26,7 @@ public class ParkingSummary {
     this.ticketCount = ticketCount;
     this.total = total;
     this.today = today;
+    this.activeTickets = activeTickets;
   }
 
   public int capacity() {
@@ -55,5 +59,9 @@ public class ParkingSummary {
 
   public int today() {
     return today;
+  }
+
+  public List<Ticket> activeTickets() {
+    return activeTickets;
   }
 }

@@ -69,6 +69,7 @@ public class LocalParkingClient implements ParkingClient {
         byType,
         lot.ticketCount(),
         lot.total(),
-        lot.todayTotal());
+        lot.todayTotal(),
+        lot.activeTickets());
   }
 }
